@@ -10,7 +10,7 @@ import { Colors } from '@/constants/theme';
 import { db } from '@/db';
 import { initializeDatabase } from '@/db/migrations';
 
-void SystemUI.setBackgroundColorAsync(Colors.background);
+void SystemUI.setBackgroundColorAsync(Colors.navigationBar);
 
 const AppDarkTheme = {
   ...DarkTheme,
@@ -31,7 +31,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    void SystemUI.setBackgroundColorAsync(Colors.background);
+    void SystemUI.setBackgroundColorAsync(Colors.navigationBar);
     if (Platform.OS === 'android') {
       NavigationBar.setStyle('light');
     }

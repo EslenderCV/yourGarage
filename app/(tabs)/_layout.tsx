@@ -15,7 +15,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: '#181B22',
+          backgroundColor: Colors.tabBar,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
           paddingTop: 8,
@@ -29,7 +29,7 @@ export default function TabLayout() {
           marginTop: 2,
         },
         sceneStyle: {
-          backgroundColor: '#181B22',
+          backgroundColor: Colors.background,
         },
       }}
     >

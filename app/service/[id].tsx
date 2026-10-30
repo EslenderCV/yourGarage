@@ -374,6 +374,7 @@ export default function ServiceDetailScreen() {
           { paddingBottom: Math.max(insets.bottom, 20) + 20 },
         ]}
         showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
       >
         <View style={styles.heroRow}>
           <View style={styles.heroIconBox}>
@@ -657,11 +658,13 @@ export default function ServiceDetailScreen() {
               contentContainerStyle={styles.lightboxOuterScroll}
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={styles.scrollView}
             >
               <ScrollView
                 centerContent
                 contentContainerStyle={styles.lightboxInnerScroll}
                 showsVerticalScrollIndicator={false}
+                style={styles.lightboxInnerScrollView}
               >
                 <Image
                   contentFit="contain"
@@ -869,12 +872,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  scrollView: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
+    backgroundColor: Colors.background,
   },
   topBarSideLeft: {
     flex: 1,
@@ -1130,7 +1138,7 @@ const styles = StyleSheet.create({
     bottom: 12,
     height: 36,
     borderRadius: 999,
-    backgroundColor: 'rgba(24, 27, 34, 0.92)',
+    backgroundColor: 'rgba(23, 26, 32, 0.92)',
     borderWidth: 1,
     borderColor: Colors.border,
     flexDirection: 'row',
@@ -1206,6 +1214,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: 12,
@@ -1245,6 +1254,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
+  },
+  lightboxInnerScrollView: {
+    backgroundColor: Colors.background,
   },
   lightboxInnerScroll: {
     flexGrow: 1,

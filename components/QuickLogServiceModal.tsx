@@ -546,6 +546,7 @@ export function QuickLogServiceModal({
             contentContainerStyle={styles.sheetScrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            style={styles.sheetScrollView}
           >
             <View style={styles.headerTopRow}>
               <Text style={styles.sheetTitle}>Quick log service</Text>
@@ -696,6 +697,7 @@ export function QuickLogServiceModal({
               contentContainerStyle={styles.categoryRow}
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={styles.categoryScrollView}
             >
               {CATEGORY_OPTIONS.map((option) => {
                 const isSelected = selectedCategory === option.key;
@@ -1211,6 +1213,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: '#646D7C',
   },
+  sheetScrollView: {
+    backgroundColor: Colors.background,
+  },
   sheetScrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -1284,7 +1289,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfaceRecessed,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
@@ -1361,6 +1366,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
+  categoryScrollView: {
+    backgroundColor: Colors.background,
+  },
   categoryRow: {
     flexDirection: 'row',
     gap: 10,
@@ -1402,7 +1410,7 @@ const styles = StyleSheet.create({
   },
   metricBox: {
     flex: 1,
-    backgroundColor: '#14171E',
+    backgroundColor: Colors.surfaceRecessed,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 16,
@@ -1455,7 +1463,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   notesInput: {
-    backgroundColor: '#14171E',
+    backgroundColor: Colors.surfaceRecessed,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 12,
@@ -1472,10 +1480,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfaceRecessed,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#4B5362',
+    borderColor: Colors.border,
     borderRadius: 16,
     padding: 16,
     gap: 14,
@@ -1620,7 +1628,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfaceRecessed,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
@@ -1654,7 +1662,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfaceRecessed,
     borderWidth: 1,
     borderColor: Colors.border,
   },

@@ -246,6 +246,7 @@ export default function GarageScreen() {
           { paddingTop: insets.top + 16 },
         ]}
         showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
       >
         <View style={styles.header}>
           <View style={styles.headerTextGroup}>
@@ -511,7 +512,9 @@ export default function GarageScreen() {
 
       <Modal
         animationType="fade"
+        navigationBarTranslucent
         onRequestClose={handleCloseOdometerModal}
+        statusBarTranslucent
         transparent
         visible={isOdometerModalOpen}
       >
@@ -591,6 +594,10 @@ export default function GarageScreen() {
 
 const styles = StyleSheet.create({
   screen: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  scrollView: {
     flex: 1,
     backgroundColor: Colors.background,
   },

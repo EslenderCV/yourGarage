@@ -1,12 +1,12 @@
 import { Platform } from 'react-native';
 
 export const Colors = {
-  background: '#181B22',
-  surface: '#181B22',
+  background: '#171A20',
+  surface: '#171A20',
   surfaceRecessed: '#181B22',
   cardSurface: '#21252E',
-  tabBar: '#181B22',
-  navigationBar: '#181B22',
+  tabBar: '#171A20',
+  navigationBar: '#171A20',
   border: '#2B303A',
   primary: '#F59E0B',
   alertAccent: '#F59E0B',
