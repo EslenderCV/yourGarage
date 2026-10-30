@@ -2,7 +2,8 @@
 - NEVER implement more than the single step explicitly requested by the user.
 - NEVER create placeholder components or mock logic for future steps.
 - Always use TypeScript strict mode (zero `any` types).
-- Visual Specs (Match `@design/` screenshots pixel-for-pixel — zero pitch-black `#000000` or `#0A0A0C`):
+- Whenever any UI is being created or modified, you MUST explicitly open and LOOK AT THE IMAGES (`.png` files in the workspace root directory: `Home Dashboard.png`, `Quick Log Service.png`, `Service Detail.png`, `History.png`, `Insights.png`, `Switch Vehicle.png`) to check what you are supposed to build and ensure your UI matches the images pixel-for-pixel.
+- Visual Specs (Match the workspace root `.png` images pixel-for-pixel — zero pitch-black `#000000` or `#0A0A0C`):
   - Screen Background, SafeAreaViews, ScrollViews, Bottom Sheets, Bottom Tab Bar & Android Navigation Bar: `#171A20` (tab bar separated by `1px solid #2B303A` top border)
   - Recessed Surfaces / Form Inputs / Tracks: `#181B22`, Border: `1px solid #2B303A`
   - Card / Elevated Surface / Metric Boxes / Timeline Icon Circles: `#21252E`, Border: `1px solid #2B303A`, Border Radius: `16px`, Padding: `16px`

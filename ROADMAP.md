@@ -8,3 +8,9 @@
 - [x] **Step 3.1: Quick-Log Service Modal UI** — Build the bottom sheet/modal UI triggered by `+ Log service`: category icon pills (`Oil`, `Brakes`, `Tires`, `Coolant`), side-by-side monospace inputs (`Odometer` pre-filled + `Total Cost`), collapsible notes/shop input, receipt attachment box UI, and reminder chips (`+5,000 km`, `6 months`).
 - [x] **Step 3.2: Receipt Photo Capture & Save Transaction** — Install `expo-image-picker` & `expo-file-system`. Wire camera/gallery receipt capture, save entry to SQLite, auto-update vehicle odometer if higher, and calculate the new reminder row.
 - [x] **Step 4.1: Service Detail Screen & Receipt Lightbox** — Build `app/service/[id].tsx` displaying odometer, cost, mechanic notes, next reminder row, zoomable receipt image, and delete/share actions.
+
+## Phase 5: History, Insights, Multi-Vehicle & Notifications
+- [x] **Step 5.1: History & Insights Tabs** — Build `app/(tabs)/history.tsx` (search, category filter pills, grouped timeline, yearly total footer) and `app/(tabs)/insights.tsx` (total spent, cost per km, 6-month spend bar chart, category breakdown).
+- [ ] **Step 5.2: Switch / Add Vehicle Bottom Sheet** — Wire the vehicle selector dropdown across tabs to switch active vehicles (`2021 VW Golf`, `2014 Kia K5`) and add new vehicles in SQLite.
+- [ ] **Step 5.3: Local Push Notifications** — Integrate `expo-notifications` to schedule local reminders when a service is logged.
+- [ ] **Step 5.4: Production EAS Build & Polish** — Configure `eas.json`, icons, splash screen, and final cleanup.
