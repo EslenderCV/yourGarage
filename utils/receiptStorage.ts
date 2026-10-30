@@ -1,5 +1,7 @@
+import { Asset } from 'expo-asset';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
 export type ReceiptCaptureSource = 'camera' | 'library';
@@ -135,4 +137,53 @@ export async function pickAndPersistReceiptAsync(
     asset.fileName
   );
   return { status: 'picked', uri: savedUri };
+}
+
+export interface ShareReceiptOutcome {
+  shared: boolean;
+  message?: string;
+}
+
+export async function shareReceiptImageAsync(
+  receiptUri: string,
+  seededFallbackAsset: number
+): Promise<ShareReceiptOutcome> {
+  const available = await Sharing.isAvailableAsync();
+  if (!available) {
+    return {
+      shared: false,
+      message: 'Native file sharing is not available on this device.',
+    };
+  }
+
+  let localFileUri = receiptUri;
+
+  if (receiptUri.startsWith('seed://')) {
+    const [loadedAsset] = await Asset.loadAsync(seededFallbackAsset);
+    const assetUri = loadedAsset?.localUri ?? loadedAsset?.uri;
+    if (!assetUri) {
+      return {
+        shared: false,
+        message: 'Unable to prepare receipt image for export.',
+      };
+    }
+
+    if (Platform.OS !== 'web') {
+      const exportTarget = new File(Paths.cache, 'receipt-export.png');
+      const sourceAssetFile = new File(assetUri);
+      await sourceAssetFile.copy(exportTarget, { overwrite: true });
+      localFileUri = exportTarget.uri;
+    } else {
+      localFileUri = assetUri;
+    }
+  }
+
+  await Sharing.shareAsync(localFileUri, {
+    dialogTitle: 'Export service receipt',
+    mimeType: localFileUri.toLowerCase().endsWith('.png')
+      ? 'image/png'
+      : 'image/jpeg',
+  });
+
+  return { shared: true };
 }

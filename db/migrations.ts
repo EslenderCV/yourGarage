@@ -3,7 +3,12 @@ import type * as SQLite from 'expo-sqlite';
 import { db } from '@/db';
 import type { Reminder, ServiceLog, Vehicle } from '@/types/database';
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
+
+interface IdRow {
+  id: number;
+  vehicle_id: number;
+}
 
 interface UserVersionRow {
   user_version: number;
@@ -73,6 +78,43 @@ export function runMigrations(database: SQLite.SQLiteDatabase = db): void {
         CREATE INDEX IF NOT EXISTS idx_reminders_vehicle_status
           ON reminders (vehicle_id, status, due_odometer ASC);
       `);
+    }
+
+    if (currentVersion < 2) {
+      const seededOilLog = database.getFirstSync<IdRow>(
+        `SELECT id, vehicle_id
+         FROM service_logs
+         WHERE category = 'oil'
+           AND title = 'Oil & filter change'
+           AND service_date = '2026-10-24'
+           AND odometer_at_service = 48250
+         ORDER BY id ASC
+         LIMIT 1`
+      );
+
+      if (seededOilLog) {
+        const existingOilReminder = database.getFirstSync<CountRow>(
+          'SELECT COUNT(*) as count FROM reminders WHERE service_log_id = ?',
+          seededOilLog.id
+        );
+
+        if ((existingOilReminder?.count ?? 0) === 0) {
+          database.runSync(
+            `INSERT INTO reminders (
+              vehicle_id,
+              service_log_id,
+              category,
+              title,
+              last_service_odometer,
+              due_odometer,
+              due_date,
+              status
+            ) VALUES (?, ?, 'oil', 'Oil & filter change', 48250, 53250, '2027-04-24', 'pending')`,
+            seededOilLog.vehicle_id,
+            seededOilLog.id
+          );
+        }
+      }
     }
 
     database.execSync(`PRAGMA user_version = ${DATABASE_VERSION};`);
@@ -153,6 +195,7 @@ export function seedDatabaseIfNeeded(database: SQLite.SQLiteDatabase = db): void
       },
     ];
 
+    let oilServiceLogId: number | null = null;
     let tireServiceLogId: number | null = null;
 
     for (const log of seedLogs) {
@@ -181,42 +224,59 @@ export function seedDatabaseIfNeeded(database: SQLite.SQLiteDatabase = db): void
         log.service_date
       );
 
+      if (log.category === 'oil' && log.title === 'Oil & filter change') {
+        oilServiceLogId = logResult.lastInsertRowId;
+      }
       if (log.category === 'tires' && log.title === 'Tire rotation') {
         tireServiceLogId = logResult.lastInsertRowId;
       }
     }
 
-    const seedReminder: Omit<Reminder, 'id'> = {
-      vehicle_id: vehicleId,
-      service_log_id: tireServiceLogId,
-      category: 'tires',
-      title: 'Tire rotation',
-      last_service_odometer: 46100,
-      due_odometer: 50000,
-      due_date: null,
-      status: 'pending',
-    };
+    const seedReminders: Omit<Reminder, 'id'>[] = [
+      {
+        vehicle_id: vehicleId,
+        service_log_id: tireServiceLogId,
+        category: 'tires',
+        title: 'Tire rotation',
+        last_service_odometer: 46100,
+        due_odometer: 50000,
+        due_date: null,
+        status: 'pending',
+      },
+      {
+        vehicle_id: vehicleId,
+        service_log_id: oilServiceLogId,
+        category: 'oil',
+        title: 'Oil & filter change',
+        last_service_odometer: 48250,
+        due_odometer: 53250,
+        due_date: '2027-04-24',
+        status: 'pending',
+      },
+    ];
 
-    database.runSync(
-      `INSERT INTO reminders (
-        vehicle_id,
-        service_log_id,
-        category,
-        title,
-        last_service_odometer,
-        due_odometer,
-        due_date,
-        status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      seedReminder.vehicle_id,
-      seedReminder.service_log_id,
-      seedReminder.category,
-      seedReminder.title,
-      seedReminder.last_service_odometer,
-      seedReminder.due_odometer,
-      seedReminder.due_date,
-      seedReminder.status
-    );
+    for (const reminder of seedReminders) {
+      database.runSync(
+        `INSERT INTO reminders (
+          vehicle_id,
+          service_log_id,
+          category,
+          title,
+          last_service_odometer,
+          due_odometer,
+          due_date,
+          status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        reminder.vehicle_id,
+        reminder.service_log_id,
+        reminder.category,
+        reminder.title,
+        reminder.last_service_odometer,
+        reminder.due_odometer,
+        reminder.due_date,
+        reminder.status
+      );
+    }
   });
 }
 

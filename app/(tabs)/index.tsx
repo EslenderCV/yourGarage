@@ -429,7 +429,21 @@ export default function GarageScreen() {
               const isLast = index === serviceLogs.length - 1;
 
               return (
-                <View key={log.id} style={styles.timelineItem}>
+                <Pressable
+                  accessibilityLabel={`${log.title}, ${formatServiceDate(log.service_date)}, ${formatCurrency(log.total_cost)}`}
+                  accessibilityRole="button"
+                  key={log.id}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/service/[id]',
+                      params: { id: String(log.id) },
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.timelineItem,
+                    pressed && styles.pressedOpacity,
+                  ]}
+                >
                   <View style={styles.timelineRail}>
                     <View style={styles.timelineIconCircle}>
                       <ServiceCategoryIcon category={log.category} />
@@ -469,7 +483,7 @@ export default function GarageScreen() {
                       </View>
                     ) : null}
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>

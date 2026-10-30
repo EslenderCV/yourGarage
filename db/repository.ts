@@ -8,6 +8,7 @@ import type {
   ServiceLog,
   Vehicle,
 } from '@/types/database';
+import { deletePersistedReceiptIfOwned } from '@/utils/receiptStorage';
 
 export const DEFAULT_SERVICE_TITLES: Record<ServiceCategory, string> = {
   oil: 'Oil & filter change',
@@ -266,4 +267,66 @@ export function createServiceEntry(
   }
 
   return result;
+}
+
+export function getVehicleById(vehicleId: number): Vehicle | null {
+  return db.getFirstSync<Vehicle>(
+    'SELECT * FROM vehicles WHERE id = ?',
+    vehicleId
+  );
+}
+
+export function getServiceLogById(serviceLogId: number): ServiceLog | null {
+  return db.getFirstSync<ServiceLog>(
+    'SELECT * FROM service_logs WHERE id = ?',
+    serviceLogId
+  );
+}
+
+export function getReminderForServiceLog(
+  serviceLogId: number
+): Reminder | null {
+  return db.getFirstSync<Reminder>(
+    `SELECT *
+     FROM reminders
+     WHERE service_log_id = ?
+     ORDER BY id DESC
+     LIMIT 1`,
+    serviceLogId
+  );
+}
+
+export function deleteServiceLog(serviceLogId: number): boolean {
+  let receiptUriToCleanup: string | null = null;
+  let wasDeleted = false;
+
+  db.withTransactionSync(() => {
+    const existing = db.getFirstSync<ServiceLog>(
+      'SELECT * FROM service_logs WHERE id = ?',
+      serviceLogId
+    );
+
+    if (!existing) {
+      return;
+    }
+
+    receiptUriToCleanup = existing.receipt_uri;
+
+    db.runSync(
+      'DELETE FROM reminders WHERE service_log_id = ?',
+      serviceLogId
+    );
+
+    const deleteResult = db.runSync(
+      'DELETE FROM service_logs WHERE id = ?',
+      serviceLogId
+    );
+    wasDeleted = deleteResult.changes > 0;
+  });
+
+  if (wasDeleted && receiptUriToCleanup) {
+    deletePersistedReceiptIfOwned(receiptUriToCleanup);
+  }
+
+  return wasDeleted;
 }

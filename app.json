@@ -54,7 +54,9 @@
           "cameraPermission": "Allow access to your camera to photograph service receipts.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
