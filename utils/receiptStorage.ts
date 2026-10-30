@@ -13,6 +13,7 @@ export interface ReceiptPickOutcome {
 }
 
 const RECEIPTS_SUBDIRECTORY = 'receipts';
+const VEHICLES_SUBDIRECTORY = 'vehicles';
 
 function extractFileExtension(filenameOrUri: string): string {
   const cleanPath = filenameOrUri.split('?')[0]?.split('#')[0] ?? '';
@@ -27,19 +28,18 @@ function extractFileExtension(filenameOrUri: string): string {
   return '.jpg';
 }
 
-export async function persistReceiptToDocumentsAsync(
+async function persistImageToSubdirectoryAsync(
   sourceUri: string,
+  subdirectoryName: string,
+  prefix: string,
   fileNameHint?: string | null
 ): Promise<string> {
   if (Platform.OS === 'web') {
     return sourceUri;
   }
 
-  const receiptsDirectory = new Directory(
-    Paths.document,
-    RECEIPTS_SUBDIRECTORY
-  );
-  receiptsDirectory.create({ intermediates: true, idempotent: true });
+  const targetDirectory = new Directory(Paths.document, subdirectoryName);
+  targetDirectory.create({ intermediates: true, idempotent: true });
 
   const sourceFile = new File(sourceUri);
   const rawExtension =
@@ -50,14 +50,26 @@ export async function persistReceiptToDocumentsAsync(
     ? rawExtension
     : `.${rawExtension}`;
 
-  const uniqueName = `receipt-${Date.now()}-${Math.random()
+  const uniqueName = `${prefix}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2, 8)}${normalizedExtension}`;
 
-  const destinationFile = new File(receiptsDirectory, uniqueName);
+  const destinationFile = new File(targetDirectory, uniqueName);
   await sourceFile.copy(destinationFile, { overwrite: true });
 
   return destinationFile.uri;
+}
+
+export async function persistReceiptToDocumentsAsync(
+  sourceUri: string,
+  fileNameHint?: string | null
+): Promise<string> {
+  return persistImageToSubdirectoryAsync(
+    sourceUri,
+    RECEIPTS_SUBDIRECTORY,
+    'receipt',
+    fileNameHint
+  );
 }
 
 export function deletePersistedReceiptIfOwned(uri: string | null): void {
@@ -79,6 +91,28 @@ export function deletePersistedReceiptIfOwned(uri: string | null): void {
     }
   } catch {
     // Ignore cleanup errors for temporary/unsaved replacements
+  }
+}
+
+export function deletePersistedVehicleImageIfOwned(uri: string | null): void {
+  if (!uri || Platform.OS === 'web') {
+    return;
+  }
+
+  try {
+    const vehiclesDirectory = new Directory(
+      Paths.document,
+      VEHICLES_SUBDIRECTORY
+    );
+    if (!uri.startsWith(vehiclesDirectory.uri)) {
+      return;
+    }
+    const targetFile = new File(uri);
+    if (targetFile.exists) {
+      targetFile.delete();
+    }
+  } catch {
+    // Ignore cleanup errors for temporary/unsaved vehicle images
   }
 }
 
@@ -134,6 +168,67 @@ export async function pickAndPersistReceiptAsync(
   const asset = libraryResult.assets[0];
   const savedUri = await persistReceiptToDocumentsAsync(
     asset.uri,
+    asset.fileName
+  );
+  return { status: 'picked', uri: savedUri };
+}
+
+export async function pickAndPersistVehicleImageAsync(
+  source: ReceiptCaptureSource
+): Promise<ReceiptPickOutcome> {
+  if (source === 'camera') {
+    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!cameraPermission.granted) {
+      return {
+        status: 'permission_denied',
+        uri: null,
+        message: 'Camera permission is required to photograph your vehicle.',
+      };
+    }
+
+    const cameraResult = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    });
+
+    if (cameraResult.canceled || cameraResult.assets.length === 0) {
+      return { status: 'canceled', uri: null };
+    }
+
+    const asset = cameraResult.assets[0];
+    const savedUri = await persistImageToSubdirectoryAsync(
+      asset.uri,
+      VEHICLES_SUBDIRECTORY,
+      'vehicle',
+      asset.fileName
+    );
+    return { status: 'picked', uri: savedUri };
+  }
+
+  const libraryPermission =
+    await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!libraryPermission.granted) {
+    return {
+      status: 'permission_denied',
+      uri: null,
+      message: 'Photo library permission is required to select a vehicle photo.',
+    };
+  }
+
+  const libraryResult = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    quality: 0.85,
+  });
+
+  if (libraryResult.canceled || libraryResult.assets.length === 0) {
+    return { status: 'canceled', uri: null };
+  }
+
+  const asset = libraryResult.assets[0];
+  const savedUri = await persistImageToSubdirectoryAsync(
+    asset.uri,
+    VEHICLES_SUBDIRECTORY,
+    'vehicle',
     asset.fileName
   );
   return { status: 'picked', uri: savedUri };

@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { BarChart3, CarFront, History } from 'lucide-react-native';
+import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
@@ -14,6 +15,35 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveBackgroundColor: 'transparent',
+        tabBarInactiveBackgroundColor: 'transparent',
+        tabBarItemStyle: {
+          backgroundColor: 'transparent',
+        },
+        tabBarButton: ({
+          children,
+          onPress,
+          onLongPress,
+          style,
+          testID,
+          'aria-label': ariaLabel,
+          'aria-selected': ariaSelected,
+          role,
+        }) => (
+          <Pressable
+            accessibilityLabel={ariaLabel}
+            accessibilityState={{ selected: Boolean(ariaSelected) }}
+            onLongPress={onLongPress}
+            onPress={(event) => {
+              onPress?.(event);
+            }}
+            role={role}
+            style={[style, { backgroundColor: 'transparent' }]}
+            testID={testID}
+          >
+            {children}
+          </Pressable>
+        ),
         tabBarStyle: {
           backgroundColor: Colors.tabBar,
           borderTopColor: Colors.border,

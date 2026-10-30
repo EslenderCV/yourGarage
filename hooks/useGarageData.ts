@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 
 import {
   createServiceEntry,
+  createVehicle,
   getActiveVehicle,
+  getAllVehicles,
   getMonthlySpend,
   getPendingReminder,
   getServiceLogs,
@@ -11,6 +13,7 @@ import {
 import type {
   CreateServiceEntryInput,
   CreateServiceEntryResult,
+  CreateVehicleInput,
   MonthlySpend,
   Reminder,
   ServiceLog,
@@ -21,18 +24,22 @@ export type LogServiceParams = Omit<CreateServiceEntryInput, 'vehicleId'>;
 
 export interface GarageData {
   vehicle: Vehicle | null;
+  vehicles: Vehicle[];
   pendingReminder: Reminder | null;
   monthlySpend: MonthlySpend;
   serviceLogs: ServiceLog[];
   isLoading: boolean;
   error: Error | null;
   refresh: () => void;
+  selectVehicle: (vehicleId: number) => void;
+  addVehicle: (input: CreateVehicleInput) => Vehicle;
   updateOdometer: (newOdometer: number) => void;
   logService: (params: LogServiceParams) => CreateServiceEntryResult | null;
 }
 
 interface GarageState {
   vehicle: Vehicle | null;
+  vehicles: Vehicle[];
   pendingReminder: Reminder | null;
   monthlySpend: MonthlySpend;
   serviceLogs: ServiceLog[];
@@ -43,6 +50,7 @@ interface GarageState {
 type GarageListener = () => void;
 
 const listeners = new Set<GarageListener>();
+let activeVehicleIdStore: number | null = null;
 
 export function notifyGarageDataChanged(): void {
   for (const listener of listeners) {
@@ -50,7 +58,14 @@ export function notifyGarageDataChanged(): void {
   }
 }
 
-function createEmptyMonthlySpend(referenceDate: Date = new Date()): MonthlySpend {
+export function setActiveVehicleSelection(vehicleId: number): void {
+  activeVehicleIdStore = vehicleId;
+  notifyGarageDataChanged();
+}
+
+function createEmptyMonthlySpend(
+  referenceDate: Date = new Date()
+): MonthlySpend {
   const currentYear = referenceDate.getFullYear();
   const currentMonth = String(referenceDate.getMonth() + 1).padStart(2, '0');
   const prevDate = new Date(currentYear, referenceDate.getMonth() - 1, 1);
@@ -71,11 +86,20 @@ function createEmptyMonthlySpend(referenceDate: Date = new Date()): MonthlySpend
 
 function loadGarageState(): GarageState {
   try {
-    const vehicle = getActiveVehicle();
+    const vehicles = getAllVehicles();
+    const vehicle =
+      (activeVehicleIdStore !== null
+        ? vehicles.find((item) => item.id === activeVehicleIdStore)
+        : undefined) ??
+      vehicles[0] ??
+      getActiveVehicle(activeVehicleIdStore);
+
+    activeVehicleIdStore = vehicle?.id ?? null;
 
     if (!vehicle) {
       return {
         vehicle: null,
+        vehicles,
         pendingReminder: null,
         monthlySpend: createEmptyMonthlySpend(),
         serviceLogs: [],
@@ -86,6 +110,7 @@ function loadGarageState(): GarageState {
 
     return {
       vehicle,
+      vehicles,
       pendingReminder: getPendingReminder(vehicle.id),
       monthlySpend: getMonthlySpend(vehicle.id),
       serviceLogs: getServiceLogs(vehicle.id),
@@ -98,6 +123,7 @@ function loadGarageState(): GarageState {
 
     return {
       vehicle: null,
+      vehicles: [],
       pendingReminder: null,
       monthlySpend: createEmptyMonthlySpend(),
       serviceLogs: [],
@@ -121,9 +147,31 @@ export function useGarageData(): GarageData {
     };
   }, [refresh]);
 
+  const selectVehicle = useCallback((vehicleId: number): void => {
+    setActiveVehicleSelection(vehicleId);
+  }, []);
+
+  const addVehicle = useCallback((input: CreateVehicleInput): Vehicle => {
+    try {
+      const created = createVehicle(input);
+      activeVehicleIdStore = created.id;
+      notifyGarageDataChanged();
+      return created;
+    } catch (err: unknown) {
+      const normalizedError =
+        err instanceof Error ? err : new Error('Failed to create vehicle');
+      setState((prev) => ({
+        ...prev,
+        error: normalizedError,
+      }));
+      throw normalizedError;
+    }
+  }, []);
+
   const updateOdometer = useCallback(
     (newOdometer: number): void => {
-      const activeVehicle = state.vehicle ?? getActiveVehicle();
+      const activeVehicle =
+        state.vehicle ?? getActiveVehicle(activeVehicleIdStore);
       if (!activeVehicle) {
         return;
       }
@@ -145,7 +193,8 @@ export function useGarageData(): GarageData {
 
   const logService = useCallback(
     (params: LogServiceParams): CreateServiceEntryResult | null => {
-      const activeVehicle = state.vehicle ?? getActiveVehicle();
+      const activeVehicle =
+        state.vehicle ?? getActiveVehicle(activeVehicleIdStore);
       if (!activeVehicle) {
         return null;
       }
@@ -172,12 +221,15 @@ export function useGarageData(): GarageData {
 
   return {
     vehicle: state.vehicle,
+    vehicles: state.vehicles,
     pendingReminder: state.pendingReminder,
     monthlySpend: state.monthlySpend,
     serviceLogs: state.serviceLogs,
     isLoading: state.isLoading,
     error: state.error,
     refresh,
+    selectVehicle,
+    addVehicle,
     updateOdometer,
     logService,
   };

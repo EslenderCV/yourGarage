@@ -3,6 +3,8 @@ import { router } from 'expo-router';
 import {
   ArrowRight,
   Bell,
+  Bike,
+  CarFront,
   ChevronDown,
   CircleDot,
   Disc3,
@@ -29,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import vwGolfThumbnail from '@/assets/images/vw-golf.png';
 import { QuickLogServiceModal } from '@/components/QuickLogServiceModal';
+import { SwitchVehicleModal } from '@/components/SwitchVehicleModal';
 import { Colors, Fonts } from '@/constants/theme';
 import { useGarageData } from '@/hooks/useGarageData';
 import type { Reminder, ServiceCategory, Vehicle } from '@/types/database';
@@ -177,9 +180,12 @@ export default function GarageScreen() {
   const insets = useSafeAreaInsets();
   const {
     vehicle,
+    vehicles,
     pendingReminder,
     monthlySpend,
     serviceLogs,
+    selectVehicle,
+    addVehicle,
     updateOdometer,
     logService,
   } = useGarageData();
@@ -198,6 +204,8 @@ export default function GarageScreen() {
     monthlySpend.currentMonthServiceCount === 1 ? 'service' : 'services'
   } this month`;
 
+  const [isSwitchVehicleOpen, setIsSwitchVehicleOpen] =
+    useState<boolean>(false);
   const [isQuickLogOpen, setIsQuickLogOpen] = useState<boolean>(false);
   const [isOdometerModalOpen, setIsOdometerModalOpen] =
     useState<boolean>(false);
@@ -237,6 +245,10 @@ export default function GarageScreen() {
   };
 
   const unitLabel = vehicle?.unit ?? 'km';
+  const usesSeededGolfImage =
+    vehicle !== null &&
+    !vehicle.image_uri &&
+    vehicle.name.toLowerCase().includes('golf');
 
   return (
     <View style={styles.screen}>
@@ -268,7 +280,17 @@ export default function GarageScreen() {
         {vehicle ? (
           <View style={styles.vehicleCard}>
             <View style={styles.vehicleInfo}>
-              <View style={styles.vehicleNameRow}>
+              <Pressable
+                accessibilityHint="Opens garage sheet to switch or add vehicles"
+                accessibilityLabel={`Active vehicle ${vehicle.name}`}
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setIsSwitchVehicleOpen(true)}
+                style={({ pressed }) => [
+                  styles.vehicleNameRow,
+                  pressed && styles.pressedOpacity,
+                ]}
+              >
                 <Text numberOfLines={1} style={styles.vehicleName}>
                   {vehicle.name}
                 </Text>
@@ -277,7 +299,7 @@ export default function GarageScreen() {
                   size={16}
                   strokeWidth={2}
                 />
-              </View>
+              </Pressable>
 
               <Pressable
                 accessibilityHint="Opens prompt to update current mileage"
@@ -302,13 +324,33 @@ export default function GarageScreen() {
               </Text>
             </View>
 
-            <Image
-              contentFit="cover"
-              source={
-                vehicle.image_uri ? { uri: vehicle.image_uri } : vwGolfThumbnail
-              }
-              style={styles.vehicleThumbnail}
-            />
+            {vehicle.image_uri || usesSeededGolfImage ? (
+              <Image
+                contentFit="cover"
+                source={
+                  vehicle.image_uri
+                    ? { uri: vehicle.image_uri }
+                    : vwGolfThumbnail
+                }
+                style={styles.vehicleThumbnail}
+              />
+            ) : (
+              <View style={styles.vehicleThumbnailPlaceholder}>
+                {vehicle.type === 'motorcycle' ? (
+                  <Bike
+                    color={Colors.textSecondary}
+                    size={28}
+                    strokeWidth={1.7}
+                  />
+                ) : (
+                  <CarFront
+                    color={Colors.textSecondary}
+                    size={28}
+                    strokeWidth={1.7}
+                  />
+                )}
+              </View>
+            )}
           </View>
         ) : null}
 
@@ -425,69 +467,80 @@ export default function GarageScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.timelineList}>
-            {serviceLogs.map((log, index) => {
-              const isLast = index === serviceLogs.length - 1;
+          {serviceLogs.length > 0 ? (
+            <View style={styles.timelineList}>
+              {serviceLogs.map((log, index) => {
+                const isLast = index === serviceLogs.length - 1;
 
-              return (
-                <Pressable
-                  accessibilityLabel={`${log.title}, ${formatServiceDate(log.service_date)}, ${formatCurrency(log.total_cost)}`}
-                  accessibilityRole="button"
-                  key={log.id}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/service/[id]',
-                      params: { id: String(log.id) },
-                    })
-                  }
-                  style={({ pressed }) => [
-                    styles.timelineItem,
-                    pressed && styles.pressedOpacity,
-                  ]}
-                >
-                  <View style={styles.timelineRail}>
-                    <View style={styles.timelineIconCircle}>
-                      <ServiceCategoryIcon category={log.category} />
-                    </View>
-                    {!isLast ? <View style={styles.timelineConnector} /> : null}
-                  </View>
-
-                  <View
-                    style={[
-                      styles.timelineContent,
-                      !isLast && styles.timelineContentSpacing,
+                return (
+                  <Pressable
+                    accessibilityLabel={`${log.title}, ${formatServiceDate(log.service_date)}, ${formatCurrency(log.total_cost)}`}
+                    accessibilityRole="button"
+                    key={log.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/service/[id]',
+                        params: { id: String(log.id) },
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.timelineItem,
+                      pressed && styles.pressedOpacity,
                     ]}
                   >
-                    <View style={styles.timelineTopRow}>
-                      <Text numberOfLines={1} style={styles.timelineTitle}>
-                        {log.title}
-                      </Text>
-                      <Text style={styles.timelinePrice}>
-                        {formatCurrency(log.total_cost)}
-                      </Text>
+                    <View style={styles.timelineRail}>
+                      <View style={styles.timelineIconCircle}>
+                        <ServiceCategoryIcon category={log.category} />
+                      </View>
+                      {!isLast ? (
+                        <View style={styles.timelineConnector} />
+                      ) : null}
                     </View>
 
-                    <Text style={styles.timelineMeta}>
-                      {formatServiceDate(log.service_date)}
-                      {'  ·  '}
-                      {formatOdometer(log.odometer_at_service)} {unitLabel}
-                    </Text>
-
-                    {log.receipt_uri ? (
-                      <View style={styles.receiptBadge}>
-                        <ReceiptText
-                          color={Colors.textSecondary}
-                          size={12}
-                          strokeWidth={2}
-                        />
-                        <Text style={styles.receiptBadgeText}>Receipt</Text>
+                    <View
+                      style={[
+                        styles.timelineContent,
+                        !isLast && styles.timelineContentSpacing,
+                      ]}
+                    >
+                      <View style={styles.timelineTopRow}>
+                        <Text numberOfLines={1} style={styles.timelineTitle}>
+                          {log.title}
+                        </Text>
+                        <Text style={styles.timelinePrice}>
+                          {formatCurrency(log.total_cost)}
+                        </Text>
                       </View>
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
+
+                      <Text style={styles.timelineMeta}>
+                        {formatServiceDate(log.service_date)}
+                        {'  ·  '}
+                        {formatOdometer(log.odometer_at_service)} {unitLabel}
+                      </Text>
+
+                      {log.receipt_uri ? (
+                        <View style={styles.receiptBadge}>
+                          <ReceiptText
+                            color={Colors.textSecondary}
+                            size={12}
+                            strokeWidth={2}
+                          />
+                          <Text style={styles.receiptBadgeText}>Receipt</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyHistoryBox}>
+              <Text style={styles.emptyHistoryTitle}>No service logs yet</Text>
+              <Text style={styles.emptyHistorySubtitle}>
+                Tap + Log service below to record maintenance for this vehicle.
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -500,6 +553,15 @@ export default function GarageScreen() {
         <Plus color={Colors.background} size={20} strokeWidth={2.5} />
         <Text style={styles.fabLabel}>Log service</Text>
       </Pressable>
+
+      <SwitchVehicleModal
+        activeVehicleId={vehicle?.id ?? null}
+        onAddVehicle={addVehicle}
+        onClose={() => setIsSwitchVehicleOpen(false)}
+        onSelectVehicle={selectVehicle}
+        vehicles={vehicles}
+        visible={isSwitchVehicleOpen}
+      />
 
       <QuickLogServiceModal
         onClose={() => setIsQuickLogOpen(false)}
@@ -659,6 +721,8 @@ const styles = StyleSheet.create({
   vehicleNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
     gap: 6,
     marginBottom: 6,
   },
@@ -694,6 +758,16 @@ const styles = StyleSheet.create({
     height: 68,
     borderRadius: 10,
     backgroundColor: Colors.surfaceRecessed,
+  },
+  vehicleThumbnailPlaceholder: {
+    width: 124,
+    height: 68,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceRecessed,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reminderCard: {
     marginTop: 16,
@@ -948,6 +1022,29 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     fontSize: 11,
     fontWeight: '500',
+  },
+  emptyHistoryBox: {
+    borderRadius: 16,
+    backgroundColor: Colors.cardSurface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 26,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyHistoryTitle: {
+    color: Colors.textPrimary,
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  emptyHistorySubtitle: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    textAlign: 'center',
   },
   fab: {
     position: 'absolute',

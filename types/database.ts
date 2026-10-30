@@ -74,3 +74,12 @@ export interface CreateServiceEntryResult {
   vehicle: Vehicle | null;
   reminder: Reminder | null;
 }
+
+export interface CreateVehicleInput {
+  name: string;
+  type: VehicleType;
+  current_odometer: number;
+  unit?: OdometerUnit;
+  subtitle?: string | null;
+  image_uri?: string | null;
+}

@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SwitchVehicleModal } from '@/components/SwitchVehicleModal';
 import { Colors, Fonts } from '@/constants/theme';
 import { useGarageData } from '@/hooks/useGarageData';
 import type { ServiceCategory, ServiceLog } from '@/types/database';
@@ -116,8 +117,11 @@ function ServiceCategoryIcon({ category }: { category: ServiceCategory }) {
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
-  const { vehicle, serviceLogs } = useGarageData();
+  const { vehicle, vehicles, serviceLogs, selectVehicle, addVehicle } =
+    useGarageData();
 
+  const [isSwitchVehicleOpen, setIsSwitchVehicleOpen] =
+    useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryFilter>('all');
@@ -205,8 +209,10 @@ export default function HistoryScreen() {
           <Text style={styles.headerTitle}>Service history</Text>
 
           <Pressable
+            accessibilityHint="Opens garage sheet to switch or add vehicles"
             accessibilityLabel={`Active vehicle ${vehicle?.name ?? '2021 VW Golf'}`}
             accessibilityRole="button"
+            onPress={() => setIsSwitchVehicleOpen(true)}
             style={({ pressed }) => [
               styles.vehiclePill,
               pressed && styles.pressedOpacity,
@@ -382,10 +388,14 @@ export default function HistoryScreen() {
         ) : (
           <View style={styles.emptyStateBox}>
             <Text style={styles.emptyStateTitle}>
-              No matching service records
+              {serviceLogs.length === 0
+                ? 'No service records yet'
+                : 'No matching service records'}
             </Text>
             <Text style={styles.emptyStateSubtitle}>
-              Try adjusting your search query or category filter.
+              {serviceLogs.length === 0
+                ? 'Service entries logged for this vehicle will appear here.'
+                : 'Try adjusting your search query or category filter.'}
             </Text>
           </View>
         )}
@@ -401,6 +411,15 @@ export default function HistoryScreen() {
           </Text>
         </View>
       </View>
+
+      <SwitchVehicleModal
+        activeVehicleId={vehicle?.id ?? null}
+        onAddVehicle={addVehicle}
+        onClose={() => setIsSwitchVehicleOpen(false)}
+        onSelectVehicle={selectVehicle}
+        vehicles={vehicles}
+        visible={isSwitchVehicleOpen}
+      />
     </View>
   );
 }

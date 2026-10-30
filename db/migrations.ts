@@ -3,7 +3,7 @@ import type * as SQLite from 'expo-sqlite';
 import { db } from '@/db';
 import type { Reminder, ServiceLog, Vehicle } from '@/types/database';
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 interface IdRow {
   id: number;
@@ -112,6 +112,32 @@ export function runMigrations(database: SQLite.SQLiteDatabase = db): void {
             ) VALUES (?, ?, 'oil', 'Oil & filter change', 48250, 53250, '2027-04-24', 'pending')`,
             seededOilLog.vehicle_id,
             seededOilLog.id
+          );
+        }
+      }
+    }
+
+    if (currentVersion < 3) {
+      const existingVehiclesCount = database.getFirstSync<CountRow>(
+        'SELECT COUNT(*) as count FROM vehicles'
+      );
+
+      if ((existingVehiclesCount?.count ?? 0) > 0) {
+        const existingKiaCount = database.getFirstSync<CountRow>(
+          "SELECT COUNT(*) as count FROM vehicles WHERE name = '2014 Kia K5'"
+        );
+
+        if ((existingKiaCount?.count ?? 0) === 0) {
+          database.runSync(
+            `INSERT INTO vehicles (name, type, current_odometer, unit, subtitle, image_uri, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            '2014 Kia K5',
+            'car',
+            112000,
+            'km',
+            'Daily driver',
+            null,
+            '2026-08-02T09:00:00.000Z'
           );
         }
       }
@@ -277,6 +303,18 @@ export function seedDatabaseIfNeeded(database: SQLite.SQLiteDatabase = db): void
         reminder.status
       );
     }
+
+    database.runSync(
+      `INSERT INTO vehicles (name, type, current_odometer, unit, subtitle, image_uri, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      '2014 Kia K5',
+      'car',
+      112000,
+      'km',
+      'Daily driver',
+      null,
+      '2026-08-02T09:00:00.000Z'
+    );
   });
 }
 

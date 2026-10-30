@@ -2,8 +2,16 @@
 - NEVER implement more than the single step explicitly requested by the user.
 - NEVER create placeholder components or mock logic for future steps.
 - Always use TypeScript strict mode (zero `any` types).
-- Whenever any UI is being created or modified, you MUST explicitly open and LOOK AT THE IMAGES (`.png` files in the workspace root directory: `Home Dashboard.png`, `Quick Log Service.png`, `Service Detail.png`, `History.png`, `Insights.png`, `Switch Vehicle.png`) to check what you are supposed to build and ensure your UI matches the images pixel-for-pixel.
-- Visual Specs (Match the workspace root `.png` images pixel-for-pixel — zero pitch-black `#000000` or `#0A0A0C`):
+- **Mandatory Design Reference Check (Workspace Root PNGs)**:
+  - Before creating or modifying ANY UI screen, component, or modal, you MUST read and visually inspect the corresponding Figma reference screenshot in the workspace root directory:
+    - `./Home Dashboard.png` (`app/(tabs)/index.tsx`)
+    - `./Quick Log Service.png` (`components/QuickLogServiceModal.tsx`)
+    - `./Service Detail.png` (`app/service/[id].tsx`)
+    - `./History.png` (`app/(tabs)/history.tsx`)
+    - `./Insights.png` (`app/(tabs)/insights.tsx`)
+    - `./Switch Vehicle.png` (Switch / Add Vehicle bottom sheet)
+  - Verify that layout hierarchy, element placement, typography, iconography, borders, spacing, and color tokens match the reference PNG pixel-for-pixel. Never guess UI layout from text descriptions alone when a reference PNG exists.
+- Visual Specs (Match workspace root PNG screenshots pixel-for-pixel — zero pitch-black `#000000` or `#0A0A0C`):
   - Screen Background, SafeAreaViews, ScrollViews, Bottom Sheets, Bottom Tab Bar & Android Navigation Bar: `#171A20` (tab bar separated by `1px solid #2B303A` top border)
   - Recessed Surfaces / Form Inputs / Tracks: `#181B22`, Border: `1px solid #2B303A`
   - Card / Elevated Surface / Metric Boxes / Timeline Icon Circles: `#21252E`, Border: `1px solid #2B303A`, Border Radius: `16px`, Padding: `16px`

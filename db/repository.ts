@@ -2,6 +2,7 @@ import { db } from '@/db';
 import type {
   CreateServiceEntryInput,
   CreateServiceEntryResult,
+  CreateVehicleInput,
   MonthlySpend,
   Reminder,
   ServiceCategory,
@@ -35,7 +36,72 @@ function formatYearMonth(date: Date): string {
   return `${year}-${month}`;
 }
 
-export function getActiveVehicle(): Vehicle | null {
+export function getAllVehicles(): Vehicle[] {
+  return db.getAllSync<Vehicle>('SELECT * FROM vehicles ORDER BY id ASC');
+}
+
+export function createVehicle(input: CreateVehicleInput): Vehicle {
+  const trimmedName = input.name.trim();
+  if (!trimmedName) {
+    throw new Error('Vehicle name is required.');
+  }
+
+  const resolvedType = input.type === 'motorcycle' ? 'motorcycle' : 'car';
+  const sanitizedOdometer = Math.max(0, Math.round(input.current_odometer));
+  const resolvedUnit = input.unit === 'mi' ? 'mi' : 'km';
+  const resolvedSubtitle = input.subtitle?.trim()
+    ? input.subtitle.trim()
+    : null;
+  const resolvedImageUri = input.image_uri?.trim()
+    ? input.image_uri.trim()
+    : null;
+
+  const insertResult = db.runSync(
+    `INSERT INTO vehicles (
+      name,
+      type,
+      current_odometer,
+      unit,
+      subtitle,
+      image_uri
+    ) VALUES (?, ?, ?, ?, ?, ?)`,
+    trimmedName,
+    resolvedType,
+    sanitizedOdometer,
+    resolvedUnit,
+    resolvedSubtitle,
+    resolvedImageUri
+  );
+
+  const inserted = db.getFirstSync<Vehicle>(
+    'SELECT * FROM vehicles WHERE id = ?',
+    insertResult.lastInsertRowId
+  );
+
+  if (!inserted) {
+    throw new Error('Failed to read newly created vehicle.');
+  }
+
+  return inserted;
+}
+
+export function getActiveVehicle(
+  preferredVehicleId?: number | null
+): Vehicle | null {
+  if (
+    typeof preferredVehicleId === 'number' &&
+    Number.isInteger(preferredVehicleId) &&
+    preferredVehicleId > 0
+  ) {
+    const preferred = db.getFirstSync<Vehicle>(
+      'SELECT * FROM vehicles WHERE id = ?',
+      preferredVehicleId
+    );
+    if (preferred) {
+      return preferred;
+    }
+  }
+
   return db.getFirstSync<Vehicle>(
     'SELECT * FROM vehicles ORDER BY id ASC LIMIT 1'
   );
