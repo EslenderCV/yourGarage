@@ -4,8 +4,14 @@ import {
   ArrowRight,
   Bell,
   ChevronDown,
+  CircleDot,
+  Disc3,
+  Droplet,
   Plus,
+  ReceiptText,
+  ThermometerSnowflake,
   TriangleAlert,
+  Wrench,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -24,10 +30,109 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import vwGolfThumbnail from '@/assets/images/vw-golf.png';
 import { Colors, Fonts } from '@/constants/theme';
 import { useGarageData } from '@/hooks/useGarageData';
-import type { Reminder, Vehicle } from '@/types/database';
+import type { Reminder, ServiceCategory, Vehicle } from '@/types/database';
+
+const MONTH_NAMES_FULL = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
+const MONTH_NAMES_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
 
 function formatOdometer(value: number): string {
   return Math.round(value).toLocaleString('en-US');
+}
+
+function formatCurrency(amount: number): string {
+  return `$${amount.toFixed(2)}`;
+}
+
+function getMonthNameFromKey(yearMonthKey: string, short = false): string {
+  const parts = yearMonthKey.split('-');
+  const monthNumber = Number.parseInt(parts[1] ?? '1', 10);
+  const index =
+    Number.isInteger(monthNumber) && monthNumber >= 1 && monthNumber <= 12
+      ? monthNumber - 1
+      : 0;
+  return short ? MONTH_NAMES_SHORT[index] : MONTH_NAMES_FULL[index];
+}
+
+function formatSpendComparison(
+  difference: number,
+  previousMonthKey: string
+): string {
+  const prevMonthLabel = getMonthNameFromKey(previousMonthKey, true);
+  if (difference > 0) {
+    return `+$${difference.toFixed(2)} vs ${prevMonthLabel}`;
+  }
+  if (difference < 0) {
+    return `-$${Math.abs(difference).toFixed(2)} vs ${prevMonthLabel}`;
+  }
+  return `$0.00 vs ${prevMonthLabel}`;
+}
+
+function formatServiceDate(isoDate: string): string {
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) {
+    return isoDate;
+  }
+  const [year, monthStr, dayStr] = parts;
+  const monthNumber = Number.parseInt(monthStr, 10);
+  const dayNumber = Number.parseInt(dayStr, 10);
+  if (
+    !Number.isInteger(monthNumber) ||
+    monthNumber < 1 ||
+    monthNumber > 12 ||
+    !Number.isInteger(dayNumber)
+  ) {
+    return isoDate;
+  }
+  const dayPadded = String(dayNumber).padStart(2, '0');
+  return `${dayPadded} ${MONTH_NAMES_SHORT[monthNumber - 1]} ${year}`;
+}
+
+function ServiceCategoryIcon({ category }: { category: ServiceCategory }) {
+  const iconProps = {
+    color: Colors.textSecondary,
+    size: 17,
+    strokeWidth: 1.9,
+  } as const;
+
+  switch (category) {
+    case 'oil':
+      return <Droplet {...iconProps} />;
+    case 'tires':
+      return <CircleDot {...iconProps} />;
+    case 'brakes':
+      return <Disc3 {...iconProps} />;
+    case 'coolant':
+      return <ThermometerSnowflake {...iconProps} />;
+    case 'other':
+      return <Wrench {...iconProps} />;
+  }
 }
 
 interface ReminderMetrics {
@@ -69,12 +174,27 @@ function calculateReminderMetrics(
 
 export default function GarageScreen() {
   const insets = useSafeAreaInsets();
-  const { vehicle, pendingReminder, updateOdometer } = useGarageData();
+  const {
+    vehicle,
+    pendingReminder,
+    monthlySpend,
+    serviceLogs,
+    updateOdometer,
+  } = useGarageData();
 
   const reminderMetrics =
     vehicle && pendingReminder
       ? calculateReminderMetrics(vehicle, pendingReminder)
       : null;
+
+  const currentMonthUpper = getMonthNameFromKey(
+    monthlySpend.currentMonthKey,
+    false
+  ).toUpperCase();
+
+  const serviceCountLabel = `${monthlySpend.currentMonthServiceCount} ${
+    monthlySpend.currentMonthServiceCount === 1 ? 'service' : 'services'
+  } this month`;
 
   const [isOdometerModalOpen, setIsOdometerModalOpen] =
     useState<boolean>(false);
@@ -112,6 +232,8 @@ export default function GarageScreen() {
     setIsOdometerModalOpen(false);
     setValidationError(null);
   };
+
+  const unitLabel = vehicle?.unit ?? 'km';
 
   return (
     <View style={styles.screen}>
@@ -258,7 +380,107 @@ export default function GarageScreen() {
             </View>
           </View>
         ) : null}
+
+        <View style={styles.spendCard}>
+          <View style={styles.spendLeftColumn}>
+            <Text style={styles.spendEyebrow}>{currentMonthUpper} SPEND</Text>
+            <Text style={styles.spendCountText}>{serviceCountLabel}</Text>
+          </View>
+
+          <View style={styles.spendRightColumn}>
+            <Text style={styles.spendTotalValue}>
+              {formatCurrency(monthlySpend.currentMonthTotal)}
+            </Text>
+            <Text style={styles.spendComparisonText}>
+              {formatSpendComparison(
+                monthlySpend.difference,
+                monthlySpend.previousMonthKey
+              )}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.historySection}>
+          <View style={styles.historyHeaderRow}>
+            <Text style={styles.historySectionTitle}>Service history</Text>
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={6}
+              onPress={() => router.push('/history')}
+              style={({ pressed }) => [
+                styles.viewAllButton,
+                pressed && styles.pressedOpacity,
+              ]}
+            >
+              <Text style={styles.viewAllText}>View all</Text>
+              <ArrowRight
+                color={Colors.textSecondary}
+                size={13}
+                strokeWidth={2}
+              />
+            </Pressable>
+          </View>
+
+          <View style={styles.timelineList}>
+            {serviceLogs.map((log, index) => {
+              const isLast = index === serviceLogs.length - 1;
+
+              return (
+                <View key={log.id} style={styles.timelineItem}>
+                  <View style={styles.timelineRail}>
+                    <View style={styles.timelineIconCircle}>
+                      <ServiceCategoryIcon category={log.category} />
+                    </View>
+                    {!isLast ? <View style={styles.timelineConnector} /> : null}
+                  </View>
+
+                  <View
+                    style={[
+                      styles.timelineContent,
+                      !isLast && styles.timelineContentSpacing,
+                    ]}
+                  >
+                    <View style={styles.timelineTopRow}>
+                      <Text numberOfLines={1} style={styles.timelineTitle}>
+                        {log.title}
+                      </Text>
+                      <Text style={styles.timelinePrice}>
+                        {formatCurrency(log.total_cost)}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.timelineMeta}>
+                      {formatServiceDate(log.service_date)}
+                      {'  ·  '}
+                      {formatOdometer(log.odometer_at_service)} {unitLabel}
+                    </Text>
+
+                    {log.receipt_uri ? (
+                      <View style={styles.receiptBadge}>
+                        <ReceiptText
+                          color={Colors.textSecondary}
+                          size={12}
+                          strokeWidth={2}
+                        />
+                        <Text style={styles.receiptBadgeText}>Receipt</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
       </ScrollView>
+
+      <Pressable
+        accessibilityLabel="Log service"
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+      >
+        <Plus color={Colors.background} size={20} strokeWidth={2.5} />
+        <Text style={styles.fabLabel}>Log service</Text>
+      </Pressable>
 
       <Modal
         animationType="fade"
@@ -303,7 +525,7 @@ export default function GarageScreen() {
                 style={styles.odometerInput}
                 value={odometerInput}
               />
-              <Text style={styles.inputUnit}>{vehicle?.unit ?? 'km'}</Text>
+              <Text style={styles.inputUnit}>{unitLabel}</Text>
             </View>
 
             {validationError ? (
@@ -347,7 +569,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 110,
   },
   header: {
     flexDirection: 'row',
@@ -544,6 +766,182 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     fontSize: 12,
     fontWeight: '600',
+  },
+  spendCard: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.cardSurface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  spendLeftColumn: {
+    flex: 1,
+  },
+  spendEyebrow: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  spendCountText: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+  },
+  spendRightColumn: {
+    alignItems: 'flex-end',
+  },
+  spendTotalValue: {
+    color: Colors.textPrimary,
+    fontFamily: Fonts.mono,
+    fontSize: 22,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  spendComparisonText: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+  },
+  historySection: {
+    marginTop: 24,
+  },
+  historyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  historySectionTitle: {
+    color: Colors.textPrimary,
+    fontFamily: Fonts.sans,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  timelineList: {
+    flexDirection: 'column',
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  timelineRail: {
+    width: 36,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  timelineIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.cardSurface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineConnector: {
+    flex: 1,
+    width: 1,
+    backgroundColor: Colors.border,
+    minHeight: 16,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  timelineContentSpacing: {
+    paddingBottom: 20,
+  },
+  timelineTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  timelineTitle: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  timelinePrice: {
+    color: Colors.textPrimary,
+    fontFamily: Fonts.mono,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  timelineMeta: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  receiptBadge: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.border,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  receiptBadgeText: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    height: 52,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#090B0E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  fabPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
+  },
+  fabLabel: {
+    color: Colors.background,
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    fontWeight: '700',
   },
   pressedOpacity: {
     opacity: 0.75,
