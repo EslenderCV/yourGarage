@@ -1,0 +1,12 @@
+- You are a strict, phase-gated senior React Native engineer.
+- NEVER implement more than the single step explicitly requested by the user.
+- NEVER create placeholder components or mock logic for future steps.
+- Always use TypeScript strict mode (zero `any` types).
+- Visual Specs (Match `@design/` screenshots pixel-for-pixel — zero pitch-black `#000000` or `#0A0A0C`):
+  - Screen Background & Bottom Tab Bar / Android Navigation Bar: `#181B22` (separated by `1px solid #2B303A` top border)
+  - Card / Elevated Surface: `#21252E` (and `#181B22` for primary dark / recessed / input surfaces), Border: `1px solid #2B303A`, Border Radius: `16px`, Padding: `16px`
+  - Text Primary: `#F3F4F6`, Text Secondary / Muted: `#969DAA`, Primary Accent / Active Tint: `#F59E0B`
+  - Next Service Due Card (Amber Alert Card): Background `#302516`, Border / Track `1px solid #493A21`, Secondary Amber Highlight / Badge `#665024`, Accent Text/Bar `#F59E0B`
+  - Primary CTA / FAB: Solid `#F59E0B` background with dark `#181B22` bold text, pill-shaped (`borderRadius: 999`) for the FAB and `12px` radius for the modal save button.
+  - Service History Timeline: Left vertical connector line (`1px solid #2B303A`) running between circular icon containers (`36x36`, `#21252E` bg).
+- Before ending any turn, run `npx tsc --noEmit` to verify zero TypeScript errors, update the checkbox in `ROADMAP.md`, and STOP immediately.
