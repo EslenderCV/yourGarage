@@ -42,3 +42,14 @@ export interface Reminder {
   due_date: string | null;
   status: ReminderStatus;
 }
+
+export interface MonthlySpend {
+  currentMonthTotal: number;
+  previousMonthTotal: number;
+  difference: number;
+  currentMonthServiceCount: number;
+  previousMonthServiceCount: number;
+  currentMonthKey: string;
+  previousMonthKey: string;
+  currency: string;
+}

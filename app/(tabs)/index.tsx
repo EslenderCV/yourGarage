@@ -1,8 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors, Fonts } from '@/constants/theme';
+import { useGarageData } from '@/hooks/useGarageData';
 
 export default function GarageScreen() {
+  useGarageData();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Garage</Text>
