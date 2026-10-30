@@ -28,6 +28,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import vwGolfThumbnail from '@/assets/images/vw-golf.png';
+import { QuickLogServiceModal } from '@/components/QuickLogServiceModal';
 import { Colors, Fonts } from '@/constants/theme';
 import { useGarageData } from '@/hooks/useGarageData';
 import type { Reminder, ServiceCategory, Vehicle } from '@/types/database';
@@ -196,6 +197,7 @@ export default function GarageScreen() {
     monthlySpend.currentMonthServiceCount === 1 ? 'service' : 'services'
   } this month`;
 
+  const [isQuickLogOpen, setIsQuickLogOpen] = useState<boolean>(false);
   const [isOdometerModalOpen, setIsOdometerModalOpen] =
     useState<boolean>(false);
   const [odometerInput, setOdometerInput] = useState<string>('');
@@ -476,11 +478,18 @@ export default function GarageScreen() {
       <Pressable
         accessibilityLabel="Log service"
         accessibilityRole="button"
+        onPress={() => setIsQuickLogOpen(true)}
         style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
       >
         <Plus color={Colors.background} size={20} strokeWidth={2.5} />
         <Text style={styles.fabLabel}>Log service</Text>
       </Pressable>
+
+      <QuickLogServiceModal
+        onClose={() => setIsQuickLogOpen(false)}
+        vehicle={vehicle}
+        visible={isQuickLogOpen}
+      />
 
       <Modal
         animationType="fade"
