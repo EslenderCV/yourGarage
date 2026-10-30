@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
+  createServiceEntry,
   getActiveVehicle,
   getMonthlySpend,
   getPendingReminder,
   getServiceLogs,
   updateVehicleOdometer,
 } from '@/db/repository';
-import type { MonthlySpend, Reminder, ServiceLog, Vehicle } from '@/types/database';
+import type {
+  CreateServiceEntryInput,
+  CreateServiceEntryResult,
+  MonthlySpend,
+  Reminder,
+  ServiceLog,
+  Vehicle,
+} from '@/types/database';
+
+export type LogServiceParams = Omit<CreateServiceEntryInput, 'vehicleId'>;
 
 export interface GarageData {
   vehicle: Vehicle | null;
@@ -18,6 +28,7 @@ export interface GarageData {
   error: Error | null;
   refresh: () => void;
   updateOdometer: (newOdometer: number) => void;
+  logService: (params: LogServiceParams) => CreateServiceEntryResult | null;
 }
 
 interface GarageState {
@@ -132,6 +143,33 @@ export function useGarageData(): GarageData {
     [state.vehicle]
   );
 
+  const logService = useCallback(
+    (params: LogServiceParams): CreateServiceEntryResult | null => {
+      const activeVehicle = state.vehicle ?? getActiveVehicle();
+      if (!activeVehicle) {
+        return null;
+      }
+
+      try {
+        const created = createServiceEntry({
+          ...params,
+          vehicleId: activeVehicle.id,
+        });
+        notifyGarageDataChanged();
+        return created;
+      } catch (err: unknown) {
+        const normalizedError =
+          err instanceof Error ? err : new Error('Failed to save service log');
+        setState((prev) => ({
+          ...prev,
+          error: normalizedError,
+        }));
+        throw normalizedError;
+      }
+    },
+    [state.vehicle]
+  );
+
   return {
     vehicle: state.vehicle,
     pendingReminder: state.pendingReminder,
@@ -141,5 +179,6 @@ export function useGarageData(): GarageData {
     error: state.error,
     refresh,
     updateOdometer,
+    logService,
   };
 }

@@ -181,6 +181,7 @@ export default function GarageScreen() {
     monthlySpend,
     serviceLogs,
     updateOdometer,
+    logService,
   } = useGarageData();
 
   const reminderMetrics =
@@ -487,6 +488,9 @@ export default function GarageScreen() {
 
       <QuickLogServiceModal
         onClose={() => setIsQuickLogOpen(false)}
+        onSaveService={(params) => {
+          logService(params);
+        }}
         vehicle={vehicle}
         visible={isQuickLogOpen}
       />

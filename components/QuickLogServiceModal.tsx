@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import {
   BellRing,
   Calendar,
@@ -9,14 +10,17 @@ import {
   CircleDot,
   Disc3,
   Droplet,
+  Image as ImageIcon,
   Minus,
   Plus,
   ThermometerSnowflake,
+  Trash2,
   Wrench,
   X,
 } from 'lucide-react-native';
 import { type ComponentRef, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -31,12 +35,20 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts } from '@/constants/theme';
+import { DEFAULT_SERVICE_TITLES } from '@/db/repository';
+import type { LogServiceParams } from '@/hooks/useGarageData';
 import type { OdometerUnit, ServiceCategory, Vehicle } from '@/types/database';
+import {
+  deletePersistedReceiptIfOwned,
+  pickAndPersistReceiptAsync,
+  type ReceiptCaptureSource,
+} from '@/utils/receiptStorage';
 
 export interface QuickLogServiceModalProps {
   visible: boolean;
   vehicle: Vehicle | null;
   onClose: () => void;
+  onSaveService: (params: LogServiceParams) => void;
 }
 
 interface CategoryOption {
@@ -106,8 +118,7 @@ function parseIsoDateParts(isoDate: string): {
   const day = Number.parseInt(parts[2] ?? '1', 10);
   return {
     year: Number.isInteger(year) ? year : 2026,
-    month:
-      Number.isInteger(month) && month >= 1 && month <= 12 ? month : 1,
+    month: Number.isInteger(month) && month >= 1 && month <= 12 ? month : 1,
     day: Number.isInteger(day) && day >= 1 && day <= 31 ? day : 1,
   };
 }
@@ -242,6 +253,7 @@ export function QuickLogServiceModal({
   visible,
   vehicle,
   onClose,
+  onSaveService,
 }: QuickLogServiceModalProps) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -281,7 +293,10 @@ export function QuickLogServiceModal({
   const [shopName, setShopName] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
-  const [isReceiptAttached, setIsReceiptAttached] = useState<boolean>(true);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [isReceiptSourceMenuOpen, setIsReceiptSourceMenuOpen] =
+    useState<boolean>(false);
+  const [isPickingReceipt, setIsPickingReceipt] = useState<boolean>(false);
 
   const [isDistanceReminderEnabled, setIsDistanceReminderEnabled] =
     useState<boolean>(true);
@@ -292,12 +307,48 @@ export function QuickLogServiceModal({
   const [isIntervalPickerOpen, setIsIntervalPickerOpen] =
     useState<boolean>(false);
 
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const resetFormFields = (): void => {
+    setSelectedCategory('oil');
+    const todayIso = getTodayIsoDate();
+    setServiceDate(todayIso);
+    const { year, month } = parseIsoDateParts(todayIso);
+    setCalendarMonthCursor({ year, month });
+    setOdometerDigits(String(vehicle?.current_odometer ?? 48250));
+    setCostInput('');
+    setShopName('');
+    setNotes('');
+    setIsNotesExpanded(false);
+    setReceiptUri(null);
+    setIsReceiptSourceMenuOpen(false);
+    setIsPickingReceipt(false);
+    setIsDistanceReminderEnabled(true);
+    setDistanceInterval(5000);
+    setIsMonthReminderEnabled(true);
+    setMonthInterval(6);
+    setIsDatePickerOpen(false);
+    setIsIntervalPickerOpen(false);
+    setFocusedField(null);
+    setFormError(null);
+  };
+
   const handleModalShow = (): void => {
     const freshOdometer = String(vehicle?.current_odometer ?? 48250);
     setOdometerDigits(freshOdometer);
     setFocusedField(null);
     setIsDatePickerOpen(false);
     setIsIntervalPickerOpen(false);
+    setIsReceiptSourceMenuOpen(false);
+    setFormError(null);
+  };
+
+  const handleCancelModal = (): void => {
+    if (receiptUri) {
+      deletePersistedReceiptIfOwned(receiptUri);
+    }
+    resetFormFields();
+    onClose();
   };
 
   const handleToggleDatePicker = (): void => {
@@ -334,6 +385,109 @@ export function QuickLogServiceModal({
     setIsDatePickerOpen(false);
   };
 
+  const handlePickReceipt = async (
+    source: ReceiptCaptureSource
+  ): Promise<void> => {
+    if (isPickingReceipt) {
+      return;
+    }
+
+    setIsPickingReceipt(true);
+    setFormError(null);
+
+    try {
+      const outcome = await pickAndPersistReceiptAsync(source);
+      if (outcome.status === 'permission_denied') {
+        setFormError(
+          outcome.message ?? 'Permission denied while accessing receipt image.'
+        );
+        return;
+      }
+
+      if (outcome.status === 'picked' && outcome.uri) {
+        if (receiptUri && receiptUri !== outcome.uri) {
+          deletePersistedReceiptIfOwned(receiptUri);
+        }
+        setReceiptUri(outcome.uri);
+        setIsReceiptSourceMenuOpen(false);
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Unable to attach receipt image. Please try again.';
+      setFormError(message);
+    } finally {
+      setIsPickingReceipt(false);
+    }
+  };
+
+  const handleRemoveReceipt = (): void => {
+    if (receiptUri) {
+      deletePersistedReceiptIfOwned(receiptUri);
+    }
+    setReceiptUri(null);
+    setIsReceiptSourceMenuOpen(false);
+  };
+
+  const handleSaveService = (): void => {
+    setFormError(null);
+
+    if (!odometerDigits) {
+      setFormError('Enter a valid odometer reading.');
+      return;
+    }
+
+    const parsedOdometer = Number.parseInt(odometerDigits, 10);
+    if (!Number.isSafeInteger(parsedOdometer) || parsedOdometer < 0) {
+      setFormError('Enter a valid non-negative odometer reading.');
+      return;
+    }
+
+    const trimmedCost = costInput.trim();
+    if (trimmedCost === '.') {
+      setFormError('Enter a valid total cost.');
+      return;
+    }
+
+    const parsedCost =
+      trimmedCost === '' ? 0 : Number.parseFloat(trimmedCost);
+    if (!Number.isFinite(parsedCost) || parsedCost < 0) {
+      setFormError('Enter a valid total cost.');
+      return;
+    }
+
+    const dueOdometer = isDistanceReminderEnabled
+      ? parsedOdometer + distanceInterval
+      : null;
+    const dueDate = isMonthReminderEnabled
+      ? addMonthsToIsoDate(serviceDate, monthInterval)
+      : null;
+
+    try {
+      onSaveService({
+        category: selectedCategory,
+        title: DEFAULT_SERVICE_TITLES[selectedCategory],
+        odometerAtService: parsedOdometer,
+        totalCost: parsedCost,
+        currency: 'USD',
+        shopName: shopName.trim() ? shopName.trim() : null,
+        notes: notes.trim() ? notes.trim() : null,
+        receiptUri,
+        serviceDate,
+        dueOdometer,
+        dueDate,
+      });
+
+      resetFormFields();
+      onClose();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to save service entry.';
+      setFormError(message);
+    }
+  };
+
   const selectedDateParts = parseIsoDateParts(serviceDate);
   const calendarSlots = buildCalendarDays(
     calendarMonthCursor.year,
@@ -350,6 +504,7 @@ export function QuickLogServiceModal({
     monthInterval,
   });
 
+  const isReceiptAttached = receiptUri !== null;
   const receiptSubtitle = isReceiptAttached
     ? shopName.trim()
       ? `${shopName.trim()} · 1 photo · Tap to replace`
@@ -360,7 +515,7 @@ export function QuickLogServiceModal({
     <Modal
       animationType="slide"
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={handleCancelModal}
       onShow={handleModalShow}
       statusBarTranslucent
       transparent
@@ -372,7 +527,7 @@ export function QuickLogServiceModal({
       >
         <Pressable
           accessibilityLabel="Close quick log modal"
-          onPress={onClose}
+          onPress={handleCancelModal}
           style={styles.backdropDismissArea}
         />
 
@@ -398,7 +553,7 @@ export function QuickLogServiceModal({
                 accessibilityLabel="Close"
                 accessibilityRole="button"
                 hitSlop={8}
-                onPress={onClose}
+                onPress={handleCancelModal}
                 style={({ pressed }) => [
                   styles.closeButton,
                   pressed && styles.pressedOpacity,
@@ -599,13 +754,16 @@ export function QuickLogServiceModal({
                   onChangeText={(text) => {
                     const digits = text.replace(/\D/g, '').slice(0, 7);
                     setOdometerDigits(digits);
+                    if (formError) {
+                      setFormError(null);
+                    }
                   }}
                   onFocus={() => setFocusedField('odometer')}
+                  onSubmitEditing={() => costInputRef.current?.focus()}
                   placeholder="0"
                   placeholderTextColor="rgba(150, 157, 170, 0.5)"
                   ref={odometerInputRef}
                   returnKeyType="next"
-                  onSubmitEditing={() => costInputRef.current?.focus()}
                   style={styles.metricValueInput}
                   value={formatIntegerWithCommas(odometerDigits)}
                 />
@@ -627,7 +785,12 @@ export function QuickLogServiceModal({
                   onBlur={() =>
                     setFocusedField((curr) => (curr === 'cost' ? null : curr))
                   }
-                  onChangeText={(text) => setCostInput(sanitizeCostInput(text))}
+                  onChangeText={(text) => {
+                    setCostInput(sanitizeCostInput(text));
+                    if (formError) {
+                      setFormError(null);
+                    }
+                  }}
                   onFocus={() => setFocusedField('cost')}
                   placeholder="0.00"
                   placeholderTextColor="rgba(150, 157, 170, 0.5)"
@@ -718,25 +881,39 @@ export function QuickLogServiceModal({
                   : 'Attach receipt photo'
               }
               accessibilityRole="button"
-              onPress={() => setIsReceiptAttached((prev) => !prev)}
+              disabled={isPickingReceipt}
+              onPress={() => setIsReceiptSourceMenuOpen((prev) => !prev)}
               style={({ pressed }) => [
                 styles.receiptBox,
+                isReceiptSourceMenuOpen && styles.receiptBoxActive,
                 pressed && styles.pressedOpacity,
               ]}
             >
               <View style={styles.receiptIconSquare}>
-                <Camera
-                  color={Colors.textPrimary}
-                  size={20}
-                  strokeWidth={1.9}
-                />
+                {isPickingReceipt ? (
+                  <ActivityIndicator color={Colors.primary} size="small" />
+                ) : receiptUri ? (
+                  <Image
+                    contentFit="cover"
+                    source={{ uri: receiptUri }}
+                    style={styles.receiptThumbnail}
+                  />
+                ) : (
+                  <Camera
+                    color={Colors.textPrimary}
+                    size={20}
+                    strokeWidth={1.9}
+                  />
+                )}
               </View>
 
               <View style={styles.receiptTextColumn}>
                 <Text style={styles.receiptTitle}>
-                  {isReceiptAttached
-                    ? 'Receipt photo attached'
-                    : 'Attach receipt photo'}
+                  {isPickingReceipt
+                    ? 'Attaching receipt photo…'
+                    : isReceiptAttached
+                      ? 'Receipt photo attached'
+                      : 'Attach receipt photo'}
                 </Text>
                 <Text numberOfLines={1} style={styles.receiptSubtitle}>
                   {receiptSubtitle}
@@ -758,6 +935,69 @@ export function QuickLogServiceModal({
               )}
             </Pressable>
 
+            {isReceiptSourceMenuOpen ? (
+              <View style={styles.receiptActionsCard}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isPickingReceipt}
+                  onPress={() => {
+                    void handlePickReceipt('camera');
+                  }}
+                  style={({ pressed }) => [
+                    styles.receiptActionButton,
+                    pressed && styles.pressedOpacity,
+                  ]}
+                >
+                  <Camera
+                    color={Colors.textPrimary}
+                    size={16}
+                    strokeWidth={2}
+                  />
+                  <Text style={styles.receiptActionText}>Take photo</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isPickingReceipt}
+                  onPress={() => {
+                    void handlePickReceipt('library');
+                  }}
+                  style={({ pressed }) => [
+                    styles.receiptActionButton,
+                    pressed && styles.pressedOpacity,
+                  ]}
+                >
+                  <ImageIcon
+                    color={Colors.textPrimary}
+                    size={16}
+                    strokeWidth={2}
+                  />
+                  <Text style={styles.receiptActionText}>
+                    Choose from library
+                  </Text>
+                </Pressable>
+
+                {isReceiptAttached ? (
+                  <Pressable
+                    accessibilityLabel="Remove attached receipt"
+                    accessibilityRole="button"
+                    disabled={isPickingReceipt}
+                    onPress={handleRemoveReceipt}
+                    style={({ pressed }) => [
+                      styles.receiptRemoveButton,
+                      pressed && styles.pressedOpacity,
+                    ]}
+                  >
+                    <Trash2
+                      color={Colors.textSecondary}
+                      size={15}
+                      strokeWidth={2}
+                    />
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
             <View style={styles.reminderHeaderRow}>
               <Text style={styles.reminderSectionLabel}>
                 REMIND ME AGAIN IN
@@ -773,9 +1013,7 @@ export function QuickLogServiceModal({
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: isDistanceReminderEnabled }}
-                onPress={() =>
-                  setIsDistanceReminderEnabled((prev) => !prev)
-                }
+                onPress={() => setIsDistanceReminderEnabled((prev) => !prev)}
                 style={({ pressed }) => [
                   styles.reminderChip,
                   isDistanceReminderEnabled
@@ -920,12 +1158,18 @@ export function QuickLogServiceModal({
 
             <Text style={styles.reminderSummaryText}>{reminderSummary}</Text>
 
+            {formError ? (
+              <Text style={styles.formErrorText}>{formError}</Text>
+            ) : null}
+
             <Pressable
               accessibilityLabel="Save service"
               accessibilityRole="button"
-              onPress={onClose}
+              disabled={isPickingReceipt}
+              onPress={handleSaveService}
               style={({ pressed }) => [
                 styles.saveCtaButton,
+                isPickingReceipt && styles.saveCtaDisabled,
                 pressed && styles.saveCtaPressed,
               ]}
             >
@@ -1236,6 +1480,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
   },
+  receiptBoxActive: {
+    borderColor: Colors.primary,
+  },
   receiptIconSquare: {
     width: 44,
     height: 44,
@@ -1243,6 +1490,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardSurface,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  receiptThumbnail: {
+    width: '100%',
+    height: '100%',
   },
   receiptTextColumn: {
     flex: 1,
@@ -1274,6 +1526,41 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptActionsCard: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  receiptActionButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: Colors.cardSurface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+  },
+  receiptActionText: {
+    color: Colors.textPrimary,
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  receiptRemoveButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: Colors.cardSurface,
+    borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1392,6 +1679,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '400',
   },
+  formErrorText: {
+    marginTop: 10,
+    color: Colors.primary,
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    fontWeight: '500',
+  },
   saveCtaButton: {
     marginTop: 20,
     height: 54,
@@ -1401,6 +1695,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  saveCtaDisabled: {
+    opacity: 0.6,
   },
   saveCtaPressed: {
     opacity: 0.9,

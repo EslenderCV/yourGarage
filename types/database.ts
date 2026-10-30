@@ -53,3 +53,24 @@ export interface MonthlySpend {
   previousMonthKey: string;
   currency: string;
 }
+
+export interface CreateServiceEntryInput {
+  vehicleId: number;
+  category: ServiceCategory;
+  title?: string;
+  odometerAtService: number;
+  totalCost: number;
+  currency?: string;
+  shopName?: string | null;
+  notes?: string | null;
+  receiptUri?: string | null;
+  serviceDate: string;
+  dueOdometer?: number | null;
+  dueDate?: string | null;
+}
+
+export interface CreateServiceEntryResult {
+  serviceLog: ServiceLog;
+  vehicle: Vehicle | null;
+  reminder: Reminder | null;
+}
