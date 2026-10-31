@@ -526,7 +526,7 @@ export default function GarageScreen() {
                     onPress={() =>
                       router.push({
                         pathname: '/service/[id]',
-                        params: { id: String(log.id) },
+                        params: { id: String(log.id), from: 'home' },
                       })
                     }
                     style={({ pressed }) => [

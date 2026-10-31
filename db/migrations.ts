@@ -1,6 +1,5 @@
 import type * as SQLite from 'expo-sqlite';
 
-import { db } from '@/db';
 import type { Reminder, ServiceLog, Vehicle } from '@/types/database';
 
 const DATABASE_VERSION = 4;
@@ -18,7 +17,7 @@ interface CountRow {
   count: number;
 }
 
-export function runMigrations(database: SQLite.SQLiteDatabase = db): void {
+export function runMigrations(database: SQLite.SQLiteDatabase): void {
   database.execSync('PRAGMA journal_mode = WAL;');
   database.execSync('PRAGMA foreign_keys = ON;');
 
@@ -199,7 +198,7 @@ export function runMigrations(database: SQLite.SQLiteDatabase = db): void {
   });
 }
 
-export function seedDatabaseIfNeeded(database: SQLite.SQLiteDatabase = db): void {
+export function seedDatabaseIfNeeded(database: SQLite.SQLiteDatabase): void {
   const existingVehicles = database.getFirstSync<CountRow>(
     'SELECT COUNT(*) as count FROM vehicles'
   );
@@ -374,7 +373,7 @@ export function seedDatabaseIfNeeded(database: SQLite.SQLiteDatabase = db): void
   });
 }
 
-export function initializeDatabase(database: SQLite.SQLiteDatabase = db): void {
+export function initializeDatabase(database: SQLite.SQLiteDatabase): void {
   runMigrations(database);
   seedDatabaseIfNeeded(database);
 }

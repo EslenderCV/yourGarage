@@ -188,11 +188,17 @@ function ServiceHeroIcon({ category }: { category: ServiceCategory }) {
 export default function ServiceDetailScreen() {
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    from?: string | string[];
+  }>();
 
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
   const parsedId = rawId ? Number.parseInt(rawId, 10) : Number.NaN;
   const isValidId = Number.isInteger(parsedId) && parsedId > 0;
+
+  const rawFrom = Array.isArray(params.from) ? params.from[0] : params.from;
+  const backLabel = rawFrom === 'home' ? 'Home' : 'History';
 
   const serviceLog = isValidId ? getServiceLogById(parsedId) : null;
   const vehicle = serviceLog ? getVehicleById(serviceLog.vehicle_id) : null;
@@ -210,8 +216,10 @@ export default function ServiceDetailScreen() {
   const handleGoBack = (): void => {
     if (router.canGoBack()) {
       router.back();
-    } else {
+    } else if (rawFrom === 'home') {
       router.replace('/');
+    } else {
+      router.replace('/history');
     }
   };
 
@@ -220,6 +228,7 @@ export default function ServiceDetailScreen() {
       <View style={[styles.screen, { paddingTop: insets.top + 12 }]}>
         <View style={styles.topBar}>
           <Pressable
+            accessibilityLabel={`Back to ${backLabel}`}
             accessibilityRole="button"
             hitSlop={8}
             onPress={handleGoBack}
@@ -233,7 +242,7 @@ export default function ServiceDetailScreen() {
               size={20}
               strokeWidth={2.1}
             />
-            <Text style={styles.backButtonText}>History</Text>
+            <Text style={styles.backButtonText}>{backLabel}</Text>
           </Pressable>
           <Text style={styles.topBarTitle}>Service detail</Text>
           <View style={styles.topBarRightSpacer} />
@@ -326,7 +335,7 @@ export default function ServiceDetailScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
         <View style={styles.topBarSideLeft}>
           <Pressable
-            accessibilityLabel="Back to History"
+            accessibilityLabel={`Back to ${backLabel}`}
             accessibilityRole="button"
             hitSlop={8}
             onPress={handleGoBack}
@@ -340,7 +349,7 @@ export default function ServiceDetailScreen() {
               size={20}
               strokeWidth={2.1}
             />
-            <Text style={styles.backButtonText}>History</Text>
+            <Text style={styles.backButtonText}>{backLabel}</Text>
           </Pressable>
         </View>
 
