@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import vwGolfThumbnail from '@/assets/images/vw-golf.png';
 import { QuickLogServiceModal } from '@/components/QuickLogServiceModal';
+import { RemindersModal } from '@/components/RemindersModal';
 import { SwitchVehicleModal } from '@/components/SwitchVehicleModal';
 import { Colors, Fonts } from '@/constants/theme';
 import { useGarageData } from '@/hooks/useGarageData';
@@ -182,6 +183,7 @@ export default function GarageScreen() {
     vehicle,
     vehicles,
     pendingReminder,
+    allPendingReminders,
     monthlySpend,
     serviceLogs,
     selectVehicle,
@@ -204,6 +206,8 @@ export default function GarageScreen() {
     monthlySpend.currentMonthServiceCount === 1 ? 'service' : 'services'
   } this month`;
 
+  const [isRemindersModalOpen, setIsRemindersModalOpen] =
+    useState<boolean>(false);
   const [isSwitchVehicleOpen, setIsSwitchVehicleOpen] =
     useState<boolean>(false);
   const [isQuickLogOpen, setIsQuickLogOpen] = useState<boolean>(false);
@@ -266,8 +270,11 @@ export default function GarageScreen() {
             <Text style={styles.headerTitle}>Ready for the road.</Text>
           </View>
           <Pressable
+            accessibilityHint="Opens active reminders and notification settings"
             accessibilityLabel="Notifications"
             accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => setIsRemindersModalOpen(true)}
             style={({ pressed }) => [
               styles.bellButton,
               pressed && styles.pressedOpacity,
@@ -561,6 +568,13 @@ export default function GarageScreen() {
         onSelectVehicle={selectVehicle}
         vehicles={vehicles}
         visible={isSwitchVehicleOpen}
+      />
+
+      <RemindersModal
+        activeVehicleName={vehicle?.name}
+        onClose={() => setIsRemindersModalOpen(false)}
+        reminders={allPendingReminders}
+        visible={isRemindersModalOpen}
       />
 
       <QuickLogServiceModal

@@ -12,5 +12,5 @@
 ## Phase 5: History, Insights, Multi-Vehicle & Notifications
 - [x] **Step 5.1: History & Insights Tabs** — Build `app/(tabs)/history.tsx` (search, category filter pills, grouped timeline, yearly total footer) and `app/(tabs)/insights.tsx` (total spent, cost per km, 6-month spend bar chart, category breakdown).
 - [x] **Step 5.2: Switch / Add Vehicle Bottom Sheet** — Wire the vehicle selector dropdown across tabs to switch active vehicles (`2021 VW Golf`, `2014 Kia K5`) and add new vehicles in SQLite.
-- [ ] **Step 5.3: Local Push Notifications** — Integrate `expo-notifications` to schedule local reminders when a service is logged.
+- [x] **Step 5.3: Local Push Notifications** — Integrate `expo-notifications` to schedule local reminders when a service is logged.
 - [ ] **Step 5.4: Production EAS Build & Polish** — Configure `eas.json`, icons, splash screen, and final cleanup.

@@ -4,6 +4,7 @@ import type {
   CreateServiceEntryResult,
   CreateVehicleInput,
   MonthlySpend,
+  PendingReminderWithVehicle,
   Reminder,
   ServiceCategory,
   ServiceLog,
@@ -120,6 +121,24 @@ export function getPendingReminder(vehicleId: number): Reminder | null {
        id ASC
      LIMIT 1`,
     vehicleId
+  );
+}
+
+export function getAllPendingReminders(): PendingReminderWithVehicle[] {
+  return db.getAllSync<PendingReminderWithVehicle>(
+    `SELECT
+       r.*,
+       v.name AS vehicle_name,
+       v.unit AS vehicle_unit
+     FROM reminders r
+     JOIN vehicles v ON r.vehicle_id = v.id
+     WHERE r.status = 'pending'
+     ORDER BY
+       CASE WHEN r.due_date IS NULL THEN 1 ELSE 0 END ASC,
+       r.due_date ASC,
+       CASE WHEN r.due_odometer IS NULL THEN 1 ELSE 0 END ASC,
+       r.due_odometer ASC,
+       r.id ASC`
   );
 }
 

@@ -43,6 +43,10 @@ import {
   pickAndPersistReceiptAsync,
   type ReceiptCaptureSource,
 } from '@/utils/receiptStorage';
+import {
+  requestNotificationPermissions,
+  scheduleServiceReminderNotification,
+} from '@/utils/notifications';
 
 export interface QuickLogServiceModalProps {
   visible: boolean;
@@ -478,6 +482,22 @@ export function QuickLogServiceModal({
         dueOdometer,
         dueDate,
       });
+
+      if (dueDate && vehicle) {
+        void (async () => {
+          try {
+            await requestNotificationPermissions();
+            await scheduleServiceReminderNotification({
+              title: DEFAULT_SERVICE_TITLES[selectedCategory],
+              vehicleName: vehicle.name,
+              dueDate,
+              dueOdometer,
+            });
+          } catch {
+            // Ignore notification scheduling failure so service log save doesn't fail
+          }
+        })();
+      }
 
       resetFormFields();
       onClose();

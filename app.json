@@ -56,7 +56,14 @@
         }
       ],
       "expo-sharing",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#F59E0B"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

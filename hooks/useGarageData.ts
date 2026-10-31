@@ -4,6 +4,7 @@ import {
   createServiceEntry,
   createVehicle,
   getActiveVehicle,
+  getAllPendingReminders,
   getAllVehicles,
   getMonthlySpend,
   getPendingReminder,
@@ -15,6 +16,7 @@ import type {
   CreateServiceEntryResult,
   CreateVehicleInput,
   MonthlySpend,
+  PendingReminderWithVehicle,
   Reminder,
   ServiceLog,
   Vehicle,
@@ -26,6 +28,7 @@ export interface GarageData {
   vehicle: Vehicle | null;
   vehicles: Vehicle[];
   pendingReminder: Reminder | null;
+  allPendingReminders: PendingReminderWithVehicle[];
   monthlySpend: MonthlySpend;
   serviceLogs: ServiceLog[];
   isLoading: boolean;
@@ -41,6 +44,7 @@ interface GarageState {
   vehicle: Vehicle | null;
   vehicles: Vehicle[];
   pendingReminder: Reminder | null;
+  allPendingReminders: PendingReminderWithVehicle[];
   monthlySpend: MonthlySpend;
   serviceLogs: ServiceLog[];
   isLoading: boolean;
@@ -95,12 +99,14 @@ function loadGarageState(): GarageState {
       getActiveVehicle(activeVehicleIdStore);
 
     activeVehicleIdStore = vehicle?.id ?? null;
+    const allPendingReminders = getAllPendingReminders();
 
     if (!vehicle) {
       return {
         vehicle: null,
         vehicles,
         pendingReminder: null,
+        allPendingReminders,
         monthlySpend: createEmptyMonthlySpend(),
         serviceLogs: [],
         isLoading: false,
@@ -112,6 +118,7 @@ function loadGarageState(): GarageState {
       vehicle,
       vehicles,
       pendingReminder: getPendingReminder(vehicle.id),
+      allPendingReminders,
       monthlySpend: getMonthlySpend(vehicle.id),
       serviceLogs: getServiceLogs(vehicle.id),
       isLoading: false,
@@ -125,6 +132,7 @@ function loadGarageState(): GarageState {
       vehicle: null,
       vehicles: [],
       pendingReminder: null,
+      allPendingReminders: [],
       monthlySpend: createEmptyMonthlySpend(),
       serviceLogs: [],
       isLoading: false,
@@ -223,6 +231,7 @@ export function useGarageData(): GarageData {
     vehicle: state.vehicle,
     vehicles: state.vehicles,
     pendingReminder: state.pendingReminder,
+    allPendingReminders: state.allPendingReminders,
     monthlySpend: state.monthlySpend,
     serviceLogs: state.serviceLogs,
     isLoading: state.isLoading,

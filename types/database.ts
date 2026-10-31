@@ -43,6 +43,11 @@ export interface Reminder {
   status: ReminderStatus;
 }
 
+export interface PendingReminderWithVehicle extends Reminder {
+  vehicle_name: string;
+  vehicle_unit: OdometerUnit;
+}
+
 export interface MonthlySpend {
   currentMonthTotal: number;
   previousMonthTotal: number;

@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { db } from '@/db';
 import { initializeDatabase } from '@/db/migrations';
+import { setupNotificationChannelAsync } from '@/utils/notifications';
 
 void SystemUI.setBackgroundColorAsync(Colors.navigationBar);
 
@@ -32,6 +33,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(Colors.navigationBar);
+    void setupNotificationChannelAsync();
     if (Platform.OS === 'android') {
       NavigationBar.setStyle('light');
     }

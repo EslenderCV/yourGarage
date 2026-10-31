@@ -41,6 +41,7 @@ import {
 } from '@/db/repository';
 import { notifyGarageDataChanged } from '@/hooks/useGarageData';
 import type { OdometerUnit, Reminder, ServiceCategory } from '@/types/database';
+import { cancelServiceReminderNotification } from '@/utils/notifications';
 import { shareReceiptImageAsync } from '@/utils/receiptStorage';
 
 const MONTH_NAMES_SHORT = [
@@ -303,13 +304,11 @@ export default function ServiceDetailScreen() {
     }
   };
 
-  const handleOpenDeletePrompt = (): void => {
-    setIsConfirmingDelete(true);
-    setIsOptionsMenuOpen(true);
-  };
-
   const handleConfirmDelete = (): void => {
     deleteServiceLog(serviceLog.id);
+    if (reminder) {
+      void cancelServiceReminderNotification(reminder.id);
+    }
     notifyGarageDataChanged();
     setIsOptionsMenuOpen(false);
     setIsConfirmingDelete(false);
@@ -385,7 +384,7 @@ export default function ServiceDetailScreen() {
             <Text style={styles.heroTitle}>{serviceLog.title}</Text>
             <Text numberOfLines={1} style={styles.heroSubtitle}>
               {formatServiceDate(serviceLog.service_date)}
-              {vehicle ? `  ·  ${vehicle.name}` : ''}
+              {vehicle ? ` · ${vehicle.name}` : ''}
             </Text>
           </View>
         </View>
@@ -579,19 +578,6 @@ export default function ServiceDetailScreen() {
             </View>
           )}
         </View>
-
-        <Pressable
-          accessibilityLabel="Delete service log"
-          accessibilityRole="button"
-          onPress={handleOpenDeletePrompt}
-          style={({ pressed }) => [
-            styles.bottomDeleteButton,
-            pressed && styles.pressedOpacity,
-          ]}
-        >
-          <Trash2 color="#EF4444" size={16} strokeWidth={2} />
-          <Text style={styles.bottomDeleteText}>Delete service entry</Text>
-        </Pressable>
       </ScrollView>
 
       {receiptUri ? (
@@ -1185,24 +1171,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     fontSize: 13,
     textAlign: 'center',
-  },
-  bottomDeleteButton: {
-    marginTop: 24,
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.cardSurface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  bottomDeleteText: {
-    color: '#EF4444',
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    fontWeight: '600',
   },
   lightboxScreen: {
     flex: 1,
