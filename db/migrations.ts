@@ -3,7 +3,7 @@ import type * as SQLite from 'expo-sqlite';
 import { db } from '@/db';
 import type { Reminder, ServiceLog, Vehicle } from '@/types/database';
 
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 
 interface IdRow {
   id: number;
@@ -40,6 +40,10 @@ export function runMigrations(database: SQLite.SQLiteDatabase = db): void {
           unit TEXT NOT NULL CHECK (unit IN ('km', 'mi')),
           subtitle TEXT,
           image_uri TEXT,
+          ble_device_id TEXT,
+          ble_device_name TEXT,
+          battery_voltage REAL,
+          last_sync_at TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
@@ -77,6 +81,19 @@ export function runMigrations(database: SQLite.SQLiteDatabase = db): void {
 
         CREATE INDEX IF NOT EXISTS idx_reminders_vehicle_status
           ON reminders (vehicle_id, status, due_odometer ASC);
+
+        CREATE TABLE IF NOT EXISTS dtc_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          vehicle_id INTEGER NOT NULL,
+          code TEXT NOT NULL,
+          description TEXT,
+          detected_at TEXT NOT NULL,
+          resolved INTEGER NOT NULL DEFAULT 0,
+          FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_dtc_logs_vehicle
+          ON dtc_logs (vehicle_id, detected_at DESC);
       `);
     }
 
@@ -143,6 +160,41 @@ export function runMigrations(database: SQLite.SQLiteDatabase = db): void {
       }
     }
 
+    if (currentVersion < 4) {
+      const vehicleColumns = database.getAllSync<{ name: string }>(
+        'PRAGMA table_info(vehicles);'
+      );
+      const vehicleColumnNames = new Set(vehicleColumns.map((col) => col.name));
+
+      if (!vehicleColumnNames.has('ble_device_id')) {
+        database.execSync('ALTER TABLE vehicles ADD COLUMN ble_device_id TEXT;');
+      }
+      if (!vehicleColumnNames.has('ble_device_name')) {
+        database.execSync('ALTER TABLE vehicles ADD COLUMN ble_device_name TEXT;');
+      }
+      if (!vehicleColumnNames.has('battery_voltage')) {
+        database.execSync('ALTER TABLE vehicles ADD COLUMN battery_voltage REAL;');
+      }
+      if (!vehicleColumnNames.has('last_sync_at')) {
+        database.execSync('ALTER TABLE vehicles ADD COLUMN last_sync_at TEXT;');
+      }
+
+      database.execSync(`
+        CREATE TABLE IF NOT EXISTS dtc_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          vehicle_id INTEGER NOT NULL,
+          code TEXT NOT NULL,
+          description TEXT,
+          detected_at TEXT NOT NULL,
+          resolved INTEGER NOT NULL DEFAULT 0,
+          FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_dtc_logs_vehicle
+          ON dtc_logs (vehicle_id, detected_at DESC);
+      `);
+    }
+
     database.execSync(`PRAGMA user_version = ${DATABASE_VERSION};`);
   });
 }
@@ -164,6 +216,10 @@ export function seedDatabaseIfNeeded(database: SQLite.SQLiteDatabase = db): void
       unit: 'km',
       subtitle: 'Personal vehicle',
       image_uri: null,
+      ble_device_id: null,
+      ble_device_name: null,
+      battery_voltage: null,
+      last_sync_at: null,
       created_at: '2026-08-01T09:00:00.000Z',
     };
 

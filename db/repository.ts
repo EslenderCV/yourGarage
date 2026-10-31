@@ -3,11 +3,13 @@ import type {
   CreateServiceEntryInput,
   CreateServiceEntryResult,
   CreateVehicleInput,
+  DtcLog,
   MonthlySpend,
   PendingReminderWithVehicle,
   Reminder,
   ServiceCategory,
   ServiceLog,
+  UpdateVehicleTelemetryInput,
   Vehicle,
 } from '@/types/database';
 import { deletePersistedReceiptIfOwned } from '@/utils/receiptStorage';
@@ -414,4 +416,118 @@ export function deleteServiceLog(serviceLogId: number): boolean {
   }
 
   return wasDeleted;
+}
+
+export function updateVehicleTelemetry(
+  vehicleId: number,
+  telemetry: UpdateVehicleTelemetryInput
+): Vehicle | null {
+  try {
+    const current = getVehicleById(vehicleId);
+    if (!current) {
+      return null;
+    }
+
+    const newOdometer =
+      typeof telemetry.odometer === 'number' && Number.isFinite(telemetry.odometer)
+        ? Math.max(current.current_odometer, Math.round(telemetry.odometer))
+        : current.current_odometer;
+
+    const newVoltage =
+      typeof telemetry.voltage === 'number' && Number.isFinite(telemetry.voltage)
+        ? telemetry.voltage
+        : current.battery_voltage;
+
+    const newDeviceId =
+      telemetry.deviceId !== undefined ? telemetry.deviceId : current.ble_device_id;
+
+    const newDeviceName =
+      telemetry.deviceName !== undefined ? telemetry.deviceName : current.ble_device_name;
+
+    const syncTimestamp = new Date().toISOString();
+
+    db.runSync(
+      `UPDATE vehicles
+       SET current_odometer = ?,
+           battery_voltage = ?,
+           ble_device_id = ?,
+           ble_device_name = ?,
+           last_sync_at = ?
+       WHERE id = ?`,
+      newOdometer,
+      newVoltage,
+      newDeviceId,
+      newDeviceName,
+      syncTimestamp,
+      vehicleId
+    );
+
+    return getVehicleById(vehicleId);
+  } catch {
+    return null;
+  }
+}
+
+export function saveDtcCodes(
+  vehicleId: number,
+  codes: { code: string; description?: string }[]
+): void {
+  if (codes.length === 0) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    db.withTransactionSync(() => {
+      for (const item of codes) {
+        const trimmedCode = item.code.trim().toUpperCase();
+        if (!trimmedCode) {
+          continue;
+        }
+
+        const existing = db.getFirstSync<{ id: number }>(
+          `SELECT id FROM dtc_logs
+           WHERE vehicle_id = ? AND code = ? AND resolved = 0
+           LIMIT 1`,
+          vehicleId,
+          trimmedCode
+        );
+
+        if (!existing) {
+          db.runSync(
+            `INSERT INTO dtc_logs (vehicle_id, code, description, detected_at, resolved)
+             VALUES (?, ?, ?, ?, 0)`,
+            vehicleId,
+            trimmedCode,
+            item.description?.trim() ?? null,
+            now
+          );
+        }
+      }
+    });
+  } catch {
+    // Graceful fallback if migrations are in-flight
+  }
+}
+
+export function getDtcLogs(vehicleId: number): DtcLog[] {
+  try {
+    return db.getAllSync<DtcLog>(
+      `SELECT * FROM dtc_logs
+       WHERE vehicle_id = ?
+       ORDER BY detected_at DESC`,
+      vehicleId
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function resolveDtcCode(dtcId: number): void {
+  try {
+    db.runSync('UPDATE dtc_logs SET resolved = 1 WHERE id = ?', dtcId);
+  } catch {
+    // Ignore error
+  }
 }

@@ -14,6 +14,7 @@ import {
   ThermometerSnowflake,
   TriangleAlert,
   Wrench,
+  Zap,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -30,6 +31,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import vwGolfThumbnail from '@/assets/images/vw-golf.png';
+import { ObdScannerModal } from '@/components/ObdScannerModal';
 import { QuickLogServiceModal } from '@/components/QuickLogServiceModal';
 import { RemindersModal } from '@/components/RemindersModal';
 import { SwitchVehicleModal } from '@/components/SwitchVehicleModal';
@@ -208,6 +210,7 @@ export default function GarageScreen() {
 
   const [isRemindersModalOpen, setIsRemindersModalOpen] =
     useState<boolean>(false);
+  const [isObdScannerOpen, setIsObdScannerOpen] = useState<boolean>(false);
   const [isSwitchVehicleOpen, setIsSwitchVehicleOpen] =
     useState<boolean>(false);
   const [isQuickLogOpen, setIsQuickLogOpen] = useState<boolean>(false);
@@ -329,6 +332,42 @@ export default function GarageScreen() {
                 {vehicle.unit}
                 {vehicle.subtitle ? `  ·  ${vehicle.subtitle}` : ''}
               </Text>
+
+              <Pressable
+                accessibilityHint="Opens OBD-II BLE dongle scanner and live telemetry sync"
+                accessibilityLabel="OBD telemetry status"
+                accessibilityRole="button"
+                hitSlop={6}
+                onPress={() => setIsObdScannerOpen(true)}
+                style={({ pressed }) => [
+                  vehicle.battery_voltage !== null && vehicle.battery_voltage > 0
+                    ? styles.obdStatusPillSynced
+                    : styles.obdStatusPillDisconnected,
+                  pressed && styles.pressedOpacity,
+                ]}
+              >
+                <Zap
+                  color={
+                    vehicle.battery_voltage !== null && vehicle.battery_voltage > 0
+                      ? Colors.primary
+                      : Colors.textSecondary
+                  }
+                  size={12}
+                  strokeWidth={2.4}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={
+                    vehicle.battery_voltage !== null && vehicle.battery_voltage > 0
+                      ? styles.obdStatusTextSynced
+                      : styles.obdStatusTextDisconnected
+                  }
+                >
+                  {vehicle.battery_voltage !== null && vehicle.battery_voltage > 0
+                    ? `⚡ ${vehicle.battery_voltage.toFixed(1)}V · Synced`
+                    : 'OBD Disconnected'}
+                </Text>
+              </Pressable>
             </View>
 
             {vehicle.image_uri || usesSeededGolfImage ? (
@@ -577,6 +616,12 @@ export default function GarageScreen() {
         visible={isRemindersModalOpen}
       />
 
+      <ObdScannerModal
+        onClose={() => setIsObdScannerOpen(false)}
+        vehicle={vehicle}
+        visible={isObdScannerOpen}
+      />
+
       <QuickLogServiceModal
         onClose={() => setIsQuickLogOpen(false)}
         onSaveService={(params) => {
@@ -766,6 +811,45 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     fontSize: 12,
     fontWeight: '400',
+  },
+  obdStatusPillSynced: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.alertBackground,
+    borderWidth: 1,
+    borderColor: Colors.alertBorder,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  obdStatusPillDisconnected: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.surfaceRecessed,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  obdStatusTextSynced: {
+    color: Colors.primary,
+    fontFamily: Fonts.mono,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  obdStatusTextDisconnected: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 10,
+    fontWeight: '600',
   },
   vehicleThumbnail: {
     width: 124,

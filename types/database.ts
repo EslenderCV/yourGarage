@@ -14,7 +14,27 @@ export interface Vehicle {
   unit: OdometerUnit;
   subtitle: string | null;
   image_uri: string | null;
+  ble_device_id: string | null;
+  ble_device_name: string | null;
+  battery_voltage: number | null;
+  last_sync_at: string | null;
   created_at: string;
+}
+
+export interface DtcLog {
+  id: number;
+  vehicle_id: number;
+  code: string;
+  description: string | null;
+  detected_at: string;
+  resolved: number;
+}
+
+export interface UpdateVehicleTelemetryInput {
+  odometer?: number;
+  voltage?: number;
+  deviceId?: string | null;
+  deviceName?: string | null;
 }
 
 export interface ServiceLog {

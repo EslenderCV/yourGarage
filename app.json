@@ -1,19 +1,21 @@
 {
   "expo": {
-    "name": "A",
-    "slug": "A",
+    "name": "yourGarage",
+    "slug": "your-garage",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "a",
+    "scheme": "yourgarage",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#171A20",
     "ios": {
+      "bundleIdentifier": "dev.eslender.yourgarage",
       "icon": "./assets/expo.icon",
       "backgroundColor": "#171A20",
       "userInterfaceStyle": "dark"
     },
     "android": {
+      "package": "dev.eslender.yourgarage",
       "backgroundColor": "#171A20",
       "userInterfaceStyle": "dark",
       "adaptiveIcon": {
@@ -62,6 +64,14 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#F59E0B"
+        }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["peripheral", "central"],
+          "bluetoothAlwaysPermission": "Allow yourGarage to automatically sync mileage and diagnostics from your vehicle's OBD-II dongle."
         }
       ]
     ],
